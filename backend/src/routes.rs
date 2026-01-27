@@ -15,6 +15,10 @@ use std::sync::Arc;
 use chrono::{Utc, Duration};
 use uuid::Uuid;
 use sqlx::Row;
+use lettre::{AsyncTransport, Message};
+use lettre::transport::smtp::authentication::Credentials;
+use lettre::Tokio1Executor;
+use std::env;
 
 pub struct AppState {
     pub rag: Arc<RagSystem>,
@@ -29,7 +33,7 @@ async fn require_verified(user: &AuthenticatedUser, pool: &DbPool) -> Result<Use
 
     match user_db {
         Ok(Some(u)) => {
-            if !u.email_verified {
+            if !u.email_verified && u.role != "admin" {
                 Err(HttpResponse::Forbidden().json(json!({"error": "Email verification required"})))
             } else {
                 Ok(u)
@@ -80,7 +84,9 @@ async fn register(
                 .execute(&state.rag.pool)
                 .await;
 
-            let verify_link = format!("/api/auth/verify?token={}", token);
+            let frontend_base = env::var("FRONTEND_BASE_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
+            let verify_link = format!("{}/verify?token={}", frontend_base.trim_end_matches('/'), token);
+            let _ = send_verification_email(body.email.clone(), body.fullname.clone(), verify_link.clone()).await;
             HttpResponse::Ok().json(json!({"message": "Registration successful. Please verify your email.", "verify_link": verify_link}))
         },
         Err(_) => HttpResponse::BadRequest().json(json!({"error": "Username or email already exists"})),
@@ -101,7 +107,7 @@ async fn login(
     match user {
         Ok(Some(user)) => {
             if auth::verify_password(&body.password, &user.password_hash) {
-                if !user.email_verified {
+                if !user.email_verified && user.role != "admin" {
                     return HttpResponse::Forbidden().json(json!({"error": "Email verification required"}));
                 }
                 let token = match auth::create_jwt(&user.id, &user.username, &user.role) {
@@ -128,6 +134,42 @@ async fn verify_email(
     body: web::Json<VerifyEmailRequest>,
 ) -> impl Responder {
     let token = &body.token;
+    let vt = sqlx::query("SELECT user_id, expires_at, consumed FROM verification_tokens WHERE token = $1")
+        .bind(token)
+        .fetch_optional(&state.rag.pool)
+        .await;
+    match vt {
+        Ok(Some(row)) => {
+            let user_id: String = row.try_get("user_id").unwrap_or_default();
+            let expires_at: chrono::NaiveDateTime = row.try_get("expires_at").unwrap();
+            let consumed: bool = row.try_get("consumed").unwrap_or(false);
+            if consumed {
+                return HttpResponse::BadRequest().json(json!({"error": "Token already used"}));
+            }
+            if expires_at < Utc::now().naive_utc() {
+                return HttpResponse::BadRequest().json(json!({"error": "Token expired"}));
+            }
+            let _ = sqlx::query("UPDATE users SET email_verified = TRUE WHERE id = $1")
+                .bind(&user_id)
+                .execute(&state.rag.pool)
+                .await;
+            let _ = sqlx::query("UPDATE verification_tokens SET consumed = TRUE WHERE token = $1")
+                .bind(token)
+                .execute(&state.rag.pool)
+                .await;
+            HttpResponse::Ok().json(json!({"message": "Email verified successfully"}))
+        },
+        Ok(None) => HttpResponse::BadRequest().json(json!({"error": "Invalid token"})),
+        Err(_) => HttpResponse::InternalServerError().json(json!({"error": "Database error"})),
+    }
+}
+
+#[get("/api/auth/verify")]
+async fn verify_email_query(
+    state: web::Data<AppState>,
+    query: web::Query<VerifyEmailRequest>,
+) -> impl Responder {
+    let token = &query.token;
     let vt = sqlx::query("SELECT user_id, expires_at, consumed FROM verification_tokens WHERE token = $1")
         .bind(token)
         .fetch_optional(&state.rag.pool)
@@ -622,7 +664,7 @@ async fn chat(
         .await;
 
     if let Ok(Some(u)) = user_db {
-        if !u.email_verified {
+        if !u.email_verified && u.role != "admin" {
             return HttpResponse::Forbidden().json(json!({"error": "Email verification required"}));
         }
         if let Some(sub_end) = u.subscription_end {
@@ -1123,5 +1165,32 @@ async fn process_knowledge_file(state: web::Data<AppState>, file_path: String) -
         let _ = state.rag.add_document(&doc.content, doc.metadata).await;
     }
     
+    Ok(())
+}
+
+async fn send_verification_email(to_email: String, to_name: String, verify_link: String) -> Result<(), Box<dyn std::error::Error>> {
+    let smtp_host = env::var("SMTP_HOST")?;
+    let smtp_port: u16 = env::var("SMTP_PORT").unwrap_or_else(|_| "587".to_string()).parse().unwrap_or(587);
+    let smtp_user = env::var("SMTP_USER")?;
+    let smtp_pass = env::var("SMTP_PASS")?;
+    let from_email = env::var("SMTP_FROM").unwrap_or_else(|_| smtp_user.clone());
+    let from_name = env::var("SMTP_FROM_NAME").unwrap_or_else(|_| "KryptonSecAI".to_string());
+
+    let email = Message::builder()
+        .from(format!("{} <{}>", from_name, from_email).parse()?)
+        .to(format!("{} <{}>", to_name, to_email).parse()?)
+        .subject("Verify your email")
+        .body(format!(
+            "Welcome to KryptonSecAI,\n\nPlease verify your email by clicking the link below:\n{}\n\nIf you did not create this account, you can ignore this email.",
+            verify_link
+        ))?;
+
+    let creds = Credentials::new(smtp_user, smtp_pass);
+    let mailer = lettre::AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp_host)?
+        .credentials(creds)
+        .port(smtp_port)
+        .build();
+
+    let _ = mailer.send(email).await?;
     Ok(())
 }

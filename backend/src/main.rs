@@ -257,6 +257,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::register)
             .service(routes::login)
             .service(routes::verify_email)
+            .service(routes::verify_email_query)
             .service(routes::upload_data)
             .service(routes::list_documents)
             .service(routes::update_document)
