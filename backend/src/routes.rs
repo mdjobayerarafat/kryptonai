@@ -6,17 +6,38 @@ use serde_json::json;
 use crate::models::{
     ChatRequest, CreateDocumentRequest, ChatResponse, RegisterRequest, LoginRequest, AuthResponse, User,
     VoucherGenerateRequest, VoucherRedeemRequest, Voucher, AIModel, CreateAIModelRequest, UpdateAIModelRequest,
-    ChatSession, ChatMessage
+    ChatSession, ChatMessage, VerifyEmailRequest, VoucherRequest
 };
 use crate::rag::RagSystem;
 use crate::auth::{self, AuthenticatedUser};
+use crate::db::DbPool;
 use std::sync::Arc;
 use chrono::{Utc, Duration};
 use uuid::Uuid;
+use sqlx::Row;
 
 pub struct AppState {
     pub rag: Arc<RagSystem>,
     pub client: reqwest::Client,
+}
+
+async fn require_verified(user: &AuthenticatedUser, pool: &DbPool) -> Result<User, HttpResponse> {
+    let user_db = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+        .bind(&user.id)
+        .fetch_optional(pool)
+        .await;
+
+    match user_db {
+        Ok(Some(u)) => {
+            if !u.email_verified {
+                Err(HttpResponse::Forbidden().json(json!({"error": "Email verification required"})))
+            } else {
+                Ok(u)
+            }
+        }
+        Ok(None) => Err(HttpResponse::Unauthorized().json(json!({"error": "User not found"}))),
+        Err(_) => Err(HttpResponse::InternalServerError().json(json!({"error": "Database error"}))),
+    }
 }
 
 #[get("/health")]
@@ -36,7 +57,7 @@ async fn register(
     };
 
     let result = sqlx::query(
-        "INSERT INTO users (id, username, password_hash, fullname, email, role) VALUES ($1, $2, $3, $4, $5, 'user')",
+        "INSERT INTO users (id, username, password_hash, fullname, email, role, email_verified) VALUES ($1, $2, $3, $4, $5, 'user', FALSE)",
     )
     .bind(&id)
     .bind(&body.username)
@@ -47,7 +68,21 @@ async fn register(
     .await;
 
     match result {
-        Ok(_) => HttpResponse::Ok().json(json!({"message": "User registered successfully"})),
+        Ok(_) => {
+            let token = uuid::Uuid::new_v4().to_string();
+            let expires = Utc::now().naive_utc() + Duration::hours(24);
+            let vt_id = uuid::Uuid::new_v4().to_string();
+            let _ = sqlx::query("INSERT INTO verification_tokens (id, user_id, token, expires_at) VALUES ($1, $2, $3, $4)")
+                .bind(&vt_id)
+                .bind(&id)
+                .bind(&token)
+                .bind(expires)
+                .execute(&state.rag.pool)
+                .await;
+
+            let verify_link = format!("/api/auth/verify?token={}", token);
+            HttpResponse::Ok().json(json!({"message": "Registration successful. Please verify your email.", "verify_link": verify_link}))
+        },
         Err(_) => HttpResponse::BadRequest().json(json!({"error": "Username or email already exists"})),
     }
 }
@@ -66,6 +101,9 @@ async fn login(
     match user {
         Ok(Some(user)) => {
             if auth::verify_password(&body.password, &user.password_hash) {
+                if !user.email_verified {
+                    return HttpResponse::Forbidden().json(json!({"error": "Email verification required"}));
+                }
                 let token = match auth::create_jwt(&user.id, &user.username, &user.role) {
                     Ok(t) => t,
                     Err(_) => return HttpResponse::InternalServerError().json(json!({"error": "Token creation failed"})),
@@ -84,20 +122,50 @@ async fn login(
     }
 }
 
+#[post("/api/auth/verify")]
+async fn verify_email(
+    state: web::Data<AppState>,
+    body: web::Json<VerifyEmailRequest>,
+) -> impl Responder {
+    let token = &body.token;
+    let vt = sqlx::query("SELECT user_id, expires_at, consumed FROM verification_tokens WHERE token = $1")
+        .bind(token)
+        .fetch_optional(&state.rag.pool)
+        .await;
+    match vt {
+        Ok(Some(row)) => {
+            let user_id: String = row.try_get("user_id").unwrap_or_default();
+            let expires_at: chrono::NaiveDateTime = row.try_get("expires_at").unwrap();
+            let consumed: bool = row.try_get("consumed").unwrap_or(false);
+            if consumed {
+                return HttpResponse::BadRequest().json(json!({"error": "Token already used"}));
+            }
+            if expires_at < Utc::now().naive_utc() {
+                return HttpResponse::BadRequest().json(json!({"error": "Token expired"}));
+            }
+            let _ = sqlx::query("UPDATE users SET email_verified = TRUE WHERE id = $1")
+                .bind(&user_id)
+                .execute(&state.rag.pool)
+                .await;
+            let _ = sqlx::query("UPDATE verification_tokens SET consumed = TRUE WHERE token = $1")
+                .bind(token)
+                .execute(&state.rag.pool)
+                .await;
+            HttpResponse::Ok().json(json!({"message": "Email verified successfully"}))
+        },
+        Ok(None) => HttpResponse::BadRequest().json(json!({"error": "Invalid token"})),
+        Err(_) => HttpResponse::InternalServerError().json(json!({"error": "Database error"})),
+    }
+}
+
 #[get("/api/profile")]
 async fn get_profile(
     user: AuthenticatedUser,
     state: web::Data<AppState>,
 ) -> impl Responder {
-    let user_data = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
-        .bind(&user.id)
-        .fetch_optional(&state.rag.pool)
-        .await;
-
-    match user_data {
-        Ok(Some(u)) => HttpResponse::Ok().json(u),
-        Ok(None) => HttpResponse::NotFound().json(json!({"error": "User not found"})),
-        Err(_) => HttpResponse::InternalServerError().json(json!({"error": "Database error"})),
+    match require_verified(&user, &state.rag.pool).await {
+        Ok(u) => HttpResponse::Ok().json(u),
+        Err(resp) => resp,
     }
 }
 
@@ -106,6 +174,9 @@ async fn list_users(
     user: AuthenticatedUser,
     state: web::Data<AppState>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin access required"}));
     }
@@ -127,6 +198,9 @@ async fn update_user_role(
     path: web::Path<String>,
     body: web::Json<serde_json::Value>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin access required"}));
     }
@@ -152,6 +226,9 @@ async fn generate_voucher(
     state: web::Data<AppState>,
     body: web::Json<VoucherGenerateRequest>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" && user.role != "editor" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin or Editor access required"}));
     }
@@ -182,6 +259,9 @@ async fn list_vouchers(
     user: AuthenticatedUser,
     state: web::Data<AppState>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" && user.role != "editor" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin or Editor access required"}));
     }
@@ -202,6 +282,9 @@ async fn redeem_voucher(
     state: web::Data<AppState>,
     body: web::Json<VoucherRedeemRequest>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     let voucher = sqlx::query_as::<_, Voucher>("SELECT * FROM vouchers WHERE code = $1")
         .bind(&body.code)
         .fetch_optional(&state.rag.pool)
@@ -258,12 +341,203 @@ async fn redeem_voucher(
     }
 }
 
+#[post("/api/vouchers/apply")]
+async fn apply_voucher_request(
+    user: AuthenticatedUser,
+    state: web::Data<AppState>,
+    body: web::Json<serde_json::Value>,
+) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
+    let existing = sqlx::query("SELECT 1 FROM voucher_requests WHERE user_id = $1 AND status = 'pending'")
+        .bind(&user.id)
+        .fetch_optional(&state.rag.pool)
+        .await;
+    if let Ok(Some(_)) = existing {
+        return HttpResponse::BadRequest().json(json!({"error": "You already have a pending request"}));
+    }
+    let message = body.get("message").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let id = uuid::Uuid::new_v4().to_string();
+    let _ = sqlx::query("INSERT INTO voucher_requests (id, user_id, message) VALUES ($1, $2, $3)")
+        .bind(&id)
+        .bind(&user.id)
+        .bind(&message)
+        .execute(&state.rag.pool)
+        .await;
+    HttpResponse::Ok().json(json!({"message": "Voucher request submitted"}))
+}
+
+#[get("/api/admin/vouchers/requests")]
+async fn list_voucher_requests(
+    user: AuthenticatedUser,
+    state: web::Data<AppState>,
+) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
+    if user.role != "admin" {
+        return HttpResponse::Forbidden().json(json!({"error": "Admin access required"}));
+    }
+    let requests = sqlx::query_as::<_, VoucherRequest>("SELECT * FROM voucher_requests ORDER BY created_at DESC")
+        .fetch_all(&state.rag.pool)
+        .await;
+    match requests {
+        Ok(r) => HttpResponse::Ok().json(r),
+        Err(_) => HttpResponse::InternalServerError().json(json!({"error": "Database error"})),
+    }
+}
+
+#[post("/api/admin/vouchers/requests/{id}/approve")]
+async fn approve_voucher_request(
+    user: AuthenticatedUser,
+    state: web::Data<AppState>,
+    path: web::Path<String>,
+    body: web::Json<serde_json::Value>,
+) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
+    if user.role != "admin" {
+        return HttpResponse::Forbidden().json(json!({"error": "Admin access required"}));
+    }
+    let request_id = path.into_inner();
+    let code = match body.get("code").and_then(|v| v.as_str()) {
+        Some(s) => s.to_string(),
+        None => return HttpResponse::BadRequest().json(json!({"error": "code is required"})),
+    };
+    let req_row = sqlx::query("SELECT user_id, status FROM voucher_requests WHERE id = $1")
+        .bind(&request_id)
+        .fetch_optional(&state.rag.pool)
+        .await;
+    let (user_id, status) = match req_row {
+        Ok(Some(row)) => {
+            let user_id: String = row.try_get("user_id").unwrap_or_default();
+            let status: String = row.try_get("status").unwrap_or_else(|_| "pending".to_string());
+            (user_id, status)
+        },
+        Ok(None) => return HttpResponse::NotFound().json(json!({"error": "Request not found"})),
+        Err(_) => return HttpResponse::InternalServerError().json(json!({"error": "Database error"})),
+    };
+    if status != "pending" {
+        return HttpResponse::BadRequest().json(json!({"error": "Request already processed"}));
+    }
+    let voucher = sqlx::query_as::<_, Voucher>("SELECT * FROM vouchers WHERE code = $1")
+        .bind(&code)
+        .fetch_optional(&state.rag.pool)
+        .await;
+    match voucher {
+        Ok(Some(v)) => {
+            if v.current_uses >= v.max_uses {
+                return HttpResponse::BadRequest().json(json!({"error": "Voucher has reached its maximum usage limit"}));
+            }
+            let usage_check = sqlx::query("SELECT 1 FROM voucher_usages WHERE voucher_id = $1 AND user_id = $2")
+                .bind(&v.id)
+                .bind(&user_id)
+                .fetch_optional(&state.rag.pool)
+                .await;
+            if let Ok(Some(_)) = usage_check {
+                return HttpResponse::BadRequest().json(json!({"error": "User already redeemed this voucher"}));
+            }
+            let _ = sqlx::query("UPDATE vouchers SET current_uses = current_uses + 1 WHERE id = $1")
+                .bind(&v.id)
+                .execute(&state.rag.pool)
+                .await;
+            let usage_id = uuid::Uuid::new_v4().to_string();
+            let _ = sqlx::query("INSERT INTO voucher_usages (id, voucher_id, user_id) VALUES ($1, $2, $3)")
+                .bind(usage_id)
+                .bind(&v.id)
+                .bind(&user_id)
+                .execute(&state.rag.pool)
+                .await;
+            let new_end_date = Utc::now().naive_utc() + Duration::days(v.duration_days as i64);
+            let _ = sqlx::query("UPDATE users SET subscription_end = $1 WHERE id = $2")
+                .bind(new_end_date)
+                .bind(&user_id)
+                .execute(&state.rag.pool)
+                .await;
+            let _ = sqlx::query("UPDATE voucher_requests SET status = 'approved', updated_at = CURRENT_TIMESTAMP WHERE id = $1")
+                .bind(&request_id)
+                .execute(&state.rag.pool)
+                .await;
+            HttpResponse::Ok().json(json!({"message": "Request approved and voucher assigned"}))
+        },
+        Ok(None) => HttpResponse::BadRequest().json(json!({"error": "Invalid voucher code"})),
+        Err(_) => HttpResponse::InternalServerError().json(json!({"error": "Database error"})),
+    }
+}
+
+#[post("/api/admin/vouchers/redeem_for_user")]
+async fn admin_redeem_voucher_for_user(
+    user: AuthenticatedUser,
+    state: web::Data<AppState>,
+    body: web::Json<serde_json::Value>,
+) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
+    if user.role != "admin" {
+        return HttpResponse::Forbidden().json(json!({"error": "Admin access required"}));
+    }
+    let target_user_id = match body.get("user_id").and_then(|v| v.as_str()) {
+        Some(s) => s.to_string(),
+        None => return HttpResponse::BadRequest().json(json!({"error": "user_id is required"})),
+    };
+    let code = match body.get("code").and_then(|v| v.as_str()) {
+        Some(s) => s.to_string(),
+        None => return HttpResponse::BadRequest().json(json!({"error": "code is required"})),
+    };
+
+    let voucher = sqlx::query_as::<_, Voucher>("SELECT * FROM vouchers WHERE code = $1")
+        .bind(&code)
+        .fetch_optional(&state.rag.pool)
+        .await;
+
+    match voucher {
+        Ok(Some(v)) => {
+            if v.current_uses >= v.max_uses {
+                return HttpResponse::BadRequest().json(json!({"error": "Voucher has reached its maximum usage limit"}));
+            }
+            let usage_check = sqlx::query("SELECT 1 FROM voucher_usages WHERE voucher_id = $1 AND user_id = $2")
+                .bind(&v.id)
+                .bind(&target_user_id)
+                .fetch_optional(&state.rag.pool)
+                .await;
+            if let Ok(Some(_)) = usage_check {
+                return HttpResponse::BadRequest().json(json!({"error": "User already redeemed this voucher"}));
+            }
+            let _ = sqlx::query("UPDATE vouchers SET current_uses = current_uses + 1 WHERE id = $1")
+                .bind(&v.id)
+                .execute(&state.rag.pool)
+                .await;
+            let usage_id = uuid::Uuid::new_v4().to_string();
+            let _ = sqlx::query("INSERT INTO voucher_usages (id, voucher_id, user_id) VALUES ($1, $2, $3)")
+                .bind(usage_id)
+                .bind(&v.id)
+                .bind(&target_user_id)
+                .execute(&state.rag.pool)
+                .await;
+            let new_end_date = Utc::now().naive_utc() + Duration::days(v.duration_days as i64);
+            let _ = sqlx::query("UPDATE users SET subscription_end = $1 WHERE id = $2")
+                .bind(new_end_date)
+                .bind(&target_user_id)
+                .execute(&state.rag.pool)
+                .await;
+            HttpResponse::Ok().json(json!({"message": "Voucher assigned to user"}))
+        },
+        Ok(None) => HttpResponse::BadRequest().json(json!({"error": "Invalid voucher code"})),
+        Err(_) => HttpResponse::InternalServerError().json(json!({"error": "Database error"})),
+    }
+}
 #[post("/api/admin/upload")]
 async fn upload_data(
     user: AuthenticatedUser,
     state: web::Data<AppState>,
     body: web::Json<Vec<CreateDocumentRequest>>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" && user.role != "editor" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin or Editor access required"}));
     }
@@ -281,6 +555,9 @@ pub async fn list_documents(
     user: AuthenticatedUser,
     state: web::Data<AppState>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" && user.role != "editor" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin or Editor access required"}));
     }
@@ -298,6 +575,9 @@ pub async fn update_document(
     path: web::Path<String>,
     body: web::Json<CreateDocumentRequest>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" && user.role != "editor" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin or Editor access required"}));
     }
@@ -315,6 +595,9 @@ pub async fn delete_document(
     state: web::Data<AppState>,
     path: web::Path<String>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" && user.role != "editor" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin or Editor access required"}));
     }
@@ -339,6 +622,9 @@ async fn chat(
         .await;
 
     if let Ok(Some(u)) = user_db {
+        if !u.email_verified {
+            return HttpResponse::Forbidden().json(json!({"error": "Email verification required"}));
+        }
         if let Some(sub_end) = u.subscription_end {
             if sub_end < Utc::now().naive_utc() {
                  return HttpResponse::PaymentRequired().json(json!({"error": "Subscription expired. Please redeem a voucher."}));
@@ -526,6 +812,9 @@ async fn list_chat_sessions(
     user: AuthenticatedUser,
     state: web::Data<AppState>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     let sessions = sqlx::query_as::<_, ChatSession>("SELECT * FROM chat_sessions WHERE user_id = $1 ORDER BY updated_at DESC")
         .bind(&user.id)
         .fetch_all(&state.rag.pool)
@@ -543,6 +832,9 @@ async fn get_chat_session(
     state: web::Data<AppState>,
     path: web::Path<String>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     let session_id = path.into_inner();
     
     // Check ownership
@@ -573,6 +865,9 @@ async fn delete_chat_session(
     state: web::Data<AppState>,
     path: web::Path<String>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     let session_id = path.into_inner();
     
     // Check ownership
@@ -602,7 +897,13 @@ async fn delete_chat_session(
 // AI Model Management Endpoints
 
 #[get("/api/models")]
-async fn list_models(state: web::Data<AppState>) -> impl Responder {
+async fn list_models(
+    user: AuthenticatedUser,
+    state: web::Data<AppState>,
+) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     let models = sqlx::query_as::<_, AIModel>("SELECT * FROM ai_models WHERE is_active = TRUE ORDER BY display_name ASC")
         .fetch_all(&state.rag.pool)
         .await;
@@ -615,6 +916,9 @@ async fn list_models(state: web::Data<AppState>) -> impl Responder {
 
 #[get("/api/admin/models")]
 async fn admin_list_models(user: AuthenticatedUser, state: web::Data<AppState>) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin access required"}));
     }
@@ -635,6 +939,9 @@ async fn add_model(
     state: web::Data<AppState>,
     body: web::Json<CreateAIModelRequest>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin access required"}));
     }
@@ -665,6 +972,9 @@ async fn update_model(
     path: web::Path<String>,
     body: web::Json<UpdateAIModelRequest>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin access required"}));
     }
@@ -711,6 +1021,9 @@ async fn delete_model(
     state: web::Data<AppState>,
     path: web::Path<String>,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin access required"}));
     }
@@ -738,6 +1051,9 @@ pub async fn upload_file(
     state: web::Data<AppState>,
     mut payload: Multipart,
 ) -> impl Responder {
+    if let Err(resp) = require_verified(&user, &state.rag.pool).await {
+        return resp;
+    }
     if user.role != "admin" && user.role != "editor" {
         return HttpResponse::Forbidden().json(json!({"error": "Admin/Editor access required"}));
     }

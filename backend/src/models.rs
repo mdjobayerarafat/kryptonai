@@ -76,6 +76,7 @@ pub struct User {
     #[serde(skip)]
     pub password_hash: String,
     pub role: String,
+    pub email_verified: bool,
     pub subscription_end: Option<chrono::NaiveDateTime>,
     pub created_at: Option<chrono::NaiveDateTime>,
 }
@@ -102,6 +103,11 @@ pub struct AuthResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct VerifyEmailRequest {
+    pub token: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct VoucherGenerateRequest {
     pub duration_days: i32,
     pub max_uses: Option<i32>,
@@ -116,6 +122,16 @@ pub struct Voucher {
     pub current_uses: i32,
     pub created_by: String,
     pub created_at: Option<chrono::NaiveDateTime>,
+}
+
+#[derive(Serialize, Deserialize, Debug, sqlx::FromRow)]
+pub struct VoucherRequest {
+    pub id: String,
+    pub user_id: String,
+    pub message: Option<String>,
+    pub status: String,
+    pub created_at: Option<chrono::NaiveDateTime>,
+    pub updated_at: Option<chrono::NaiveDateTime>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

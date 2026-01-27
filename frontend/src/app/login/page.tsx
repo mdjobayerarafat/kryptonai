@@ -24,7 +24,8 @@ export default function LoginPage() {
       localStorage.setItem("role", res.data.role);
       router.push("/chat");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Login failed");
+      const msg = err.response?.data?.error || "Login failed";
+      setError(msg);
     }
   };
 
@@ -41,6 +42,13 @@ export default function LoginPage() {
         <p className="text-gray-500 text-center mb-8">Enter your credentials to access the system.</p>
         
         {error && <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded mb-6 text-sm text-center">{error}</div>}
+        {error === "Email verification required" && (
+          <div className="text-center text-xs text-gray-400 mb-6">
+            Please verify your email. If you have a token link, open it on this host or paste the token on your Profile page.
+            <br />
+            <Link href="/verify" className="text-blue-400 hover:text-blue-300 underline">Open verification page</Link>
+          </div>
+        )}
         
         <form onSubmit={handleLogin} className="space-y-5">
           <div>

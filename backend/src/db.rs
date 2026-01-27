@@ -32,8 +32,18 @@ pub async fn init_db() -> DbPool {
             email TEXT UNIQUE,
             password_hash TEXT NOT NULL,
             role TEXT NOT NULL DEFAULT 'user',
+            email_verified BOOLEAN NOT NULL DEFAULT FALSE,
             subscription_end TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )"#,
+        r#"CREATE TABLE IF NOT EXISTS verification_tokens (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            expires_at TIMESTAMP NOT NULL,
+            consumed BOOLEAN NOT NULL DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )"#,
         r#"CREATE TABLE IF NOT EXISTS vouchers (
             id TEXT PRIMARY KEY,
@@ -50,6 +60,15 @@ pub async fn init_db() -> DbPool {
             user_id TEXT NOT NULL,
             redeemed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(voucher_id, user_id)
+        )"#,
+        r#"CREATE TABLE IF NOT EXISTS voucher_requests (
+            id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            message TEXT,
+            status TEXT NOT NULL DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         )"#,
         r#"CREATE TABLE IF NOT EXISTS ai_models (
             id TEXT PRIMARY KEY,
@@ -83,6 +102,12 @@ pub async fn init_db() -> DbPool {
             .await
             .unwrap_or_else(|_| panic!("Failed to create table: {}", query));
     }
+
+    // Ensure column exists when upgrading from older schema
+    sqlx::query("ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN NOT NULL DEFAULT FALSE")
+        .execute(&pool)
+        .await
+        .ok();
 
     pool
 }

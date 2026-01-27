@@ -33,7 +33,7 @@ async fn main() -> std::io::Result<()> {
         let id = uuid::Uuid::new_v4().to_string();
         let hash = auth::hash_password("Melucifer2022").unwrap();
         sqlx::query(
-            "INSERT INTO users (id, username, password_hash, fullname, email, role, subscription_end) VALUES ($1, $2, $3, $4, $5, 'admin', $6)",
+            "INSERT INTO users (id, username, password_hash, fullname, email, role, email_verified, subscription_end) VALUES ($1, $2, $3, $4, $5, 'admin', TRUE, $6)",
         )
         .bind(id)
         .bind("admin_jobayer")
@@ -60,7 +60,7 @@ async fn main() -> std::io::Result<()> {
         let id = uuid::Uuid::new_v4().to_string();
         let hash = auth::hash_password("editor123").unwrap();
         sqlx::query(
-            "INSERT INTO users (id, username, password_hash, fullname, email, role, subscription_end) VALUES ($1, $2, $3, $4, $5, 'editor', $6)",
+            "INSERT INTO users (id, username, password_hash, fullname, email, role, email_verified, subscription_end) VALUES ($1, $2, $3, $4, $5, 'editor', TRUE, $6)",
         )
         .bind(id)
         .bind("editor_user")
@@ -256,6 +256,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::health_check)
             .service(routes::register)
             .service(routes::login)
+            .service(routes::verify_email)
             .service(routes::upload_data)
             .service(routes::list_documents)
             .service(routes::update_document)
@@ -270,6 +271,10 @@ async fn main() -> std::io::Result<()> {
             .service(routes::generate_voucher)
             .service(routes::list_vouchers)
             .service(routes::redeem_voucher)
+            .service(routes::apply_voucher_request)
+            .service(routes::list_voucher_requests)
+            .service(routes::approve_voucher_request)
+            .service(routes::admin_redeem_voucher_for_user)
             .service(routes::list_models)
             .service(routes::admin_list_models)
             .service(routes::add_model)

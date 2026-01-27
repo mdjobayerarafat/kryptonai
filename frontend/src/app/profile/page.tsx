@@ -12,6 +12,7 @@ interface UserProfile {
   fullname: string;
   email: string;
   role: string;
+  email_verified: boolean;
   subscription_end: string | null;
   created_at: string;
 }
@@ -22,6 +23,10 @@ export default function ProfilePage() {
   const [voucherCode, setVoucherCode] = useState("");
   const [redeemMsg, setRedeemMsg] = useState("");
   const [error, setError] = useState("");
+  const [verifyToken, setVerifyToken] = useState("");
+  const [verifyMsg, setVerifyMsg] = useState("");
+  const [applyMessage, setApplyMessage] = useState("");
+  const [applyMsg, setApplyMsg] = useState("");
   const router = useRouter();
 
   useEffect(() => {
@@ -72,6 +77,45 @@ export default function ProfilePage() {
       setVoucherCode("");
     } catch (err: any) {
       setError(err.response?.data?.error || "Redemption failed");
+    }
+  };
+
+  const handleApplyVoucher = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setApplyMsg("");
+    setError("");
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.post(
+        `${getApiBaseUrl()}/api/vouchers/apply`,
+        { message: applyMessage },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setApplyMsg(res.data.message || "Voucher request submitted");
+      setApplyMessage("");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Request failed");
+    }
+  };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setVerifyMsg("");
+    setError("");
+    try {
+      const res = await axios.post(`${getApiBaseUrl()}/api/auth/verify`, { token: verifyToken });
+      setVerifyMsg(res.data.message || "Email verified successfully");
+      // Refresh profile
+      const token = localStorage.getItem("token");
+      if (token) {
+        const profileRes = await axios.get(`${getApiBaseUrl()}/api/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setProfile(profileRes.data);
+      }
+      setVerifyToken("");
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Verification failed");
     }
   };
 
@@ -138,6 +182,61 @@ export default function ProfilePage() {
 
             {/* Right Column: Status & Actions */}
             <div className="md:col-span-2 space-y-8 animate-slide-up delay-100">
+                {/* Email Verification */}
+                <div className="bg-[#0a0a0a] rounded-2xl border border-white/10 p-8 shadow-2xl relative overflow-hidden">
+                    <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
+                        <Mail size={24} className="text-blue-500" /> 
+                        Email Verification
+                    </h2>
+                    {profile?.email_verified ? (
+                        <div className="bg-green-500/10 border border-green-500/20 p-6 rounded-xl flex items-start gap-4">
+                            <CheckCircle size={24} className="text-green-500 mt-1 flex-shrink-0" />
+                            <div>
+                                <p className="text-green-400 font-bold text-lg mb-1">Email Verified</p>
+                                <p className="text-gray-400 text-sm">Your account email is verified. You can use all features.</p>
+                            </div>
+                        </div>
+                    ) : (
+                        <div>
+                            <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-xl flex items-start gap-4 mb-6">
+                                <AlertTriangle size={24} className="text-red-500 mt-1 flex-shrink-0" />
+                                <div>
+                                    <p className="text-red-400 font-bold text-lg mb-1">Email Not Verified</p>
+                                    <p className="text-gray-400 text-sm">
+                                        Please verify your email to access all features. If you received a token link, paste the token below or open the verification link.
+                                    </p>
+                                </div>
+                            </div>
+                            <form onSubmit={handleVerify} className="flex flex-col sm:flex-row gap-4">
+                                <div className="relative flex-1">
+                                    <Hash size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                                    <input
+                                        type="text"
+                                        value={verifyToken}
+                                        onChange={(e) => setVerifyToken(e.target.value)}
+                                        placeholder="PASTE-VERIFICATION-TOKEN"
+                                        className="w-full bg-black border border-white/20 rounded-xl py-3 pl-10 pr-4 text-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none font-mono transition-all"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    className="bg-blue-500 hover:bg-blue-400 text-black font-bold px-8 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(59,130,246,0.3)] hover:scale-[1.05]"
+                                >
+                                    Verify Email
+                                </button>
+                            </form>
+                            <p className="text-xs text-gray-500 mt-3">
+                                If you have a link like <span className="font-mono text-gray-300">/api/auth/verify?token=...</span>, open <Link href={`/verify?token=${verifyToken || ""}`} className="text-blue-400 hover:text-blue-300 underline">this page</Link> on the same host and it will verify automatically.
+                            </p>
+                            {verifyMsg && (
+                                <div className="bg-green-500/10 text-green-400 border border-green-500/20 p-4 rounded-xl mt-6 flex items-center gap-3 animate-fade-in">
+                                    <CheckCircle size={18} />
+                                    {verifyMsg}
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
                 {/* Subscription Status */}
                 <div className="bg-[#0a0a0a] rounded-2xl border border-white/10 p-8 shadow-2xl relative overflow-hidden">
                     <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
@@ -206,6 +305,42 @@ export default function ProfilePage() {
                             className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-8 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(234,179,8,0.3)] hover:scale-[1.05]"
                         >
                             Redeem
+                        </button>
+                    </form>
+                </div>
+
+                {/* Apply for Voucher */}
+                <div className="bg-[#0a0a0a] rounded-2xl border border-white/10 p-8 shadow-2xl">
+                    <h2 className="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                        <CreditCard size={24} className="text-green-500" /> 
+                        Apply for Voucher
+                    </h2>
+                    <p className="text-gray-400 mb-6 text-sm">Request a voucher from admin if you don't have a code.</p>
+                    {applyMsg && (
+                        <div className="bg-green-500/10 text-green-400 border border-green-500/20 p-4 rounded-xl mb-6 flex items-center gap-3 animate-fade-in">
+                            <CheckCircle size={18} />
+                            {applyMsg}
+                        </div>
+                    )}
+                    {error && (
+                        <div className="bg-red-500/10 text-red-400 border border-red-500/20 p-4 rounded-xl mb-6 flex items-center gap-3 animate-fade-in">
+                            <AlertTriangle size={18} />
+                            {error}
+                        </div>
+                    )}
+                    <form onSubmit={handleApplyVoucher} className="flex flex-col gap-4">
+                        <textarea
+                            value={applyMessage}
+                            onChange={(e) => setApplyMessage(e.target.value)}
+                            placeholder="Tell us why you need access (optional)"
+                            className="w-full bg-black border border-white/20 rounded-xl p-3 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all"
+                            rows={3}
+                        />
+                        <button
+                            type="submit"
+                            className="bg-green-600 hover:bg-green-500 text-black font-bold px-8 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(22,163,74,0.3)] hover:scale-[1.02]"
+                        >
+                            Submit Request
                         </button>
                     </form>
                 </div>

@@ -29,6 +29,12 @@ export default function AdminPage() {
   const [generatedVoucher, setGeneratedVoucher] = useState<{ code: string; message: string; max_uses: number } | null>(null);
   const [voucherError, setVoucherError] = useState("");
   const [vouchersList, setVouchersList] = useState<any[]>([]);
+  const [assignUserId, setAssignUserId] = useState<string>("");
+  const [assignCode, setAssignCode] = useState<string>("");
+  const [assignMsg, setAssignMsg] = useState<string>("");
+  const [voucherRequests, setVoucherRequests] = useState<any[]>([]);
+  const [approveResult, setApproveResult] = useState<string>("");
+  const [requestCodes, setRequestCodes] = useState<Record<string, string>>({});
 
   // AI Models State
   const [models, setModels] = useState<any[]>([]);
@@ -58,6 +64,10 @@ export default function AdminPage() {
       }
       if (activeTab === "vouchers") {
           fetchVouchers();
+          if (userRole === "admin") {
+              fetchUsers();
+          }
+          fetchVoucherRequests();
       }
       if (activeTab === "models") {
           fetchModels();
@@ -235,6 +245,57 @@ export default function AdminPage() {
       fetchVouchers(); // Refresh list
     } catch (err: any) {
       setVoucherError(err.response?.data?.error || "Failed to generate voucher");
+    }
+  };
+
+  const handleAssignVoucher = async () => {
+    setAssignMsg("");
+    setVoucherError("");
+    const token = localStorage.getItem("token");
+    if (!assignUserId || !assignCode) {
+        setVoucherError("Select user and enter a code");
+        return;
+    }
+    try {
+      const res = await axios.post(`${getApiBaseUrl()}/api/admin/vouchers/redeem_for_user`, 
+        { user_id: assignUserId, code: assignCode }, 
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setAssignMsg(res.data.message || "Voucher assigned");
+      setAssignCode("");
+    } catch (err: any) {
+      setVoucherError(err.response?.data?.error || "Failed to assign voucher");
+    }
+  };
+  
+  const fetchVoucherRequests = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.get(`${getApiBaseUrl()}/api/admin/vouchers/requests`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setVoucherRequests(res.data);
+    } catch (err) {
+      console.error("Failed to fetch voucher requests", err);
+    }
+  };
+
+  const handleApproveRequest = async (id: string, code: string) => {
+    setApproveResult("");
+    setVoucherError("");
+    const token = localStorage.getItem("token");
+    if (!code) {
+      setVoucherError("Enter a code to approve");
+      return;
+    }
+    try {
+      const res = await axios.post(`${getApiBaseUrl()}/api/admin/vouchers/requests/${id}/approve`, 
+        { code }, { headers: { Authorization: `Bearer ${token}` } });
+      setApproveResult(res.data.message || "Approved");
+      fetchVoucherRequests();
+      fetchVouchers();
+    } catch (err: any) {
+      setVoucherError(err.response?.data?.error || "Approval failed");
     }
   };
 
@@ -602,6 +663,56 @@ export default function AdminPage() {
                         </button>
                     </div>
 
+                    <div className="mt-12">
+                        <h3 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
+                            <Users size={20} className="text-green-500" />
+                            Assign Voucher To User
+                        </h3>
+                        {assignMsg && (
+                          <div className="bg-green-500/10 text-green-400 border border-green-500/20 p-4 rounded-xl mb-6 flex items-center gap-3">
+                            <CheckCircle size={18} />
+                            {assignMsg}
+                          </div>
+                        )}
+                        {voucherError && (
+                          <div className="bg-red-500/10 text-red-400 border border-red-500/20 p-4 rounded-xl mb-6 flex items-center gap-3">
+                            <AlertCircle size={18} />
+                            {voucherError}
+                          </div>
+                        )}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Select User</label>
+                                <select 
+                                    value={assignUserId}
+                                    onChange={(e) => setAssignUserId(e.target.value)}
+                                    className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all"
+                                >
+                                    <option value="">Choose a user</option>
+                                    {users.map(u => (
+                                        <option key={u.id} value={u.id}>{u.username} ({u.email || "no-email"})</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Voucher Code</label>
+                                <input 
+                                    type="text" 
+                                    value={assignCode}
+                                    onChange={(e) => setAssignCode(e.target.value)}
+                                    className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all font-mono"
+                                    placeholder="CODE"
+                                />
+                            </div>
+                            <button 
+                                onClick={handleAssignVoucher}
+                                className="bg-green-600 hover:bg-green-500 text-black font-bold px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(22,163,74,0.3)] hover:scale-[1.02]"
+                            >
+                                Assign Voucher
+                            </button>
+                        </div>
+                    </div>
+
                     {generatedVoucher && (
                         <div className="bg-green-500/10 border border-green-500/20 p-8 rounded-xl text-center mb-8 animate-fade-in relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/20 blur-[50px] rounded-full"></div>
@@ -665,6 +776,88 @@ export default function AdminPage() {
                                         <tr>
                                             <td colSpan={5} className="p-8 text-center text-gray-600">No vouchers active. Generate one above.</td>
                                         </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="mt-12">
+                        <h3 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
+                            <CreditCard size={20} className="text-green-500" />
+                            Voucher Requests
+                        </h3>
+                        {approveResult && (
+                          <div className="bg-green-500/10 text-green-400 border border-green-500/20 p-4 rounded-xl mb-6 flex items-center gap-3">
+                            <CheckCircle size={18} />
+                            {approveResult}
+                          </div>
+                        )}
+                        {voucherError && (
+                          <div className="bg-red-500/10 text-red-400 border border-red-500/20 p-4 rounded-xl mb-6 flex items-center gap-3">
+                            <AlertCircle size={18} />
+                            {voucherError}
+                          </div>
+                        )}
+                        <div className="overflow-x-auto rounded-xl border border-white/5">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-white/5">
+                                    <tr className="text-gray-400 text-sm uppercase tracking-wider">
+                                        <th className="p-4">User</th>
+                                        <th className="p-4">Message</th>
+                                        <th className="p-4">Status</th>
+                                        <th className="p-4">Requested</th>
+                                        <th className="p-4">Approve</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {voucherRequests.map((r) => (
+                                      <tr key={r.id} className="hover:bg-white/5 transition-colors">
+                                        <td className="p-4 text-gray-300">
+                                          {users.find(u => u.id === r.user_id)?.username || r.user_id}
+                                        </td>
+                                        <td className="p-4 text-gray-400">
+                                          {r.message || "-"}
+                                        </td>
+                                        <td className="p-4">
+                                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
+                                            r.status === 'pending' 
+                                            ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' 
+                                            : r.status === 'approved'
+                                            ? 'bg-green-500/10 text-green-400 border-green-500/20'
+                                            : 'bg-red-500/10 text-red-400 border-red-500/20'
+                                          }`}>
+                                            {r.status}
+                                          </span>
+                                        </td>
+                                        <td className="p-4 text-gray-600 text-sm">{new Date(r.created_at).toLocaleString()}</td>
+                                        <td className="p-4">
+                                          {r.status === 'pending' ? (
+                                            <div className="flex items-center gap-2">
+                                              <input 
+                                                type="text" 
+                                                placeholder="CODE"
+                                                value={requestCodes[r.id] || ""}
+                                                onChange={(e) => setRequestCodes((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                                                className="bg-black border border-white/20 rounded-lg px-3 py-1.5 text-sm text-gray-300 focus:border-green-500 outline-none font-mono"
+                                              />
+                                              <button 
+                                                onClick={() => handleApproveRequest(r.id, requestCodes[r.id] || "")}
+                                                className="px-3 py-1.5 rounded-lg bg-green-600 text-black text-sm font-bold hover:bg-green-500 transition-colors"
+                                              >
+                                                Approve
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <span className="text-gray-500 text-sm">Processed</span>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    ))}
+                                    {voucherRequests.length === 0 && (
+                                      <tr>
+                                        <td colSpan={5} className="p-8 text-center text-gray-600">No voucher requests.</td>
+                                      </tr>
                                     )}
                                 </tbody>
                             </table>
