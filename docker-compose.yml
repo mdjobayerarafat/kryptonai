@@ -1,0 +1,61 @@
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: krypton_db
+    environment:
+      POSTGRES_USER: krypton
+      POSTGRES_PASSWORD: krypton_password
+      POSTGRES_DB: krypton_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - krypton_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U krypton -d krypton_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: krypton_backend
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgres://krypton:krypton_password@postgres:5432/krypton_db
+      RUST_LOG: info
+      PORT: 8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - krypton_network
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: krypton_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - krypton_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  krypton_network:
+    driver: bridge
