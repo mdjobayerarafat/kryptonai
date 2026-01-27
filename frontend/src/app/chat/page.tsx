@@ -65,15 +65,22 @@ export default function ChatPage() {
     }
 
     // Fetch models
-    axios.get(`${getApiBaseUrl()}/api/models`)
+    axios.get(`${getApiBaseUrl()}/api/models`, {
+        headers: { Authorization: `Bearer ${token}` }
+    })
         .then(res => {
             setModels(res.data);
-            // If currently selected model is not in the list (and list is not empty), select the first one
             if (res.data.length > 0 && !res.data.find((m: any) => m.api_model_name === selectedModel)) {
                 setSelectedModel(res.data[0].api_model_name);
             }
         })
-        .catch(err => console.error("Failed to fetch models", err));
+        .catch(err => {
+            if (err?.response?.status === 401) {
+                router.push("/login");
+            } else {
+                console.error("Failed to fetch models", err);
+            }
+        });
 
     fetchHistory();
   }, [router]);
