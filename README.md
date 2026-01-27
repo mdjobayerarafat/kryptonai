@@ -1,18 +1,35 @@
-# KryptonSecAI
+<div align="center">
+  <img src="frontend/public/hero-app.png" alt="KryptonSecAI" width="720" />
 
-Cybersecurity-focused AI platform with Retrieval-Augmented Generation, voucher-based access, and multi-model control.
+  # KryptonSecAI
 
-## Highlights
+  Cybersecurity-focused AI platform with Retrieval-Augmented Generation, voucher-based access, and multi-model control.  
+  A subproduct of KryptonX.
+
+  <br />
+
+  <img src="https://img.shields.io/badge/Rust-1B1B1B?style=for-the-badge&logo=rust&logoColor=white" />
+  <img src="https://img.shields.io/badge/Actix--Web-000000?style=for-the-badge&logo=actix&logoColor=white" />
+  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
+  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
+</div>
+
+## Overview
+KryptonSecAI is built for security teams, researchers, and educators who need grounded answers, controlled access, and flexible model choice. It pairs a pgvector-backed RAG pipeline with a unified system prompt across user-selected models, then gates access using voucher-based subscriptions and role-based permissions.
+
+## Features
 - RAG pipeline with pgvector-backed search for grounded answers
 - Multi-model chat with a unified system prompt and user-selected models
 - Voucher-only access control with admin management
 - Role-based authentication (admin/editor/user)
 - Next.js 16 frontend and Rust Actix-Web backend
 
-## Architecture
+## Stack
 - Frontend: Next.js (App Router), React 19, Tailwind CSS
 - Backend: Rust, Actix-Web, SQLx
-- Database: PostgreSQL with pgvector
+- Database: PostgreSQL + pgvector
 - Embeddings: fastembed + ONNX Runtime
 
 ## Quick Start (Docker)
