@@ -6,7 +6,7 @@ import remarkGfm from "remark-gfm";
 import { 
   Send, Shield, Terminal, Database, LogOut, 
   Plus, MessageSquare, User, Settings, ChevronRight,
-  Copy, Check, Upload, X, Menu
+  Copy, Check, Upload, X, Menu, Activity, Cpu, Zap
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,166 @@ interface Message {
   role: "user" | "assistant" | "system";
   content: string;
 }
+
+// Matrix Digital Rain Component
+const MatrixRain = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+    const charArray = chars.split('');
+    const fontSize = 14;
+    const columns = canvas.width / fontSize;
+    const drops: number[] = [];
+
+    for (let i = 0; i < columns; i++) {
+      drops[i] = 1;
+    }
+
+    const draw = () => {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = '#00ff88';
+      ctx.font = `${fontSize}px monospace`;
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = charArray[Math.floor(Math.random() * charArray.length)];
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    };
+
+    const interval = setInterval(draw, 50);
+
+    const handleResize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="fixed inset-0 pointer-events-none z-0 opacity-20"
+      style={{ background: 'transparent' }}
+    />
+  );
+};
+
+// Cyber Grid Background Component
+const CyberGrid = () => {
+  return <div className="cyber-grid-dashboard" />;
+};
+
+// Network Connections Component
+const NetworkConnections = () => {
+  const [connections, setConnections] = useState<Array<{id: number, x1: number, y1: number, x2: number, y2: number, delay: number}>>([]);
+
+  useEffect(() => {
+    const newConnections = Array.from({ length: 25 }, (_, i) => ({
+      id: i,
+      x1: Math.random() * 100,
+      y1: Math.random() * 100,
+      x2: Math.random() * 100,
+      y2: Math.random() * 100,
+      delay: Math.random() * 4
+    }));
+    setConnections(newConnections);
+  }, []);
+
+  return (
+    <div className="network-connections">
+      <svg className="network-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+        {connections.map((conn) => (
+          <line
+            key={conn.id}
+            x1={conn.x1}
+            y1={conn.y1}
+            x2={conn.x2}
+            y2={conn.y2}
+            className="network-connection-line"
+            style={{ animationDelay: `${conn.delay}s` }}
+          />
+        ))}
+        {connections.map((conn) => (
+          <circle
+            key={`node-${conn.id}`}
+            cx={conn.x1}
+            cy={conn.y1}
+            r="0.2"
+            className="network-node"
+            style={{ animationDelay: `${conn.delay}s` }}
+          />
+        ))}
+      </svg>
+    </div>
+  );
+};
+
+// Floating Data Particles Component
+const DataParticles = () => {
+  const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, delay: number, duration: number}>>([]);
+
+  useEffect(() => {
+    const newParticles = Array.from({ length: 40 }, (_, i) => ({
+      id: i,
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      delay: Math.random() * 6,
+      duration: 4 + Math.random() * 6
+    }));
+    setParticles(newParticles);
+  }, []);
+
+  return (
+    <div className="data-particles">
+      {particles.map((particle) => (
+        <div
+          key={particle.id}
+          className="data-particle"
+          style={{
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            animationDelay: `${particle.delay}s`,
+            animationDuration: `${particle.duration}s`
+          }}
+        />
+      ))}
+    </div>
+  );
+};
+
+// Scanning Lines Component
+const ScanningLines = () => {
+  return (
+    <div className="scanning-lines">
+      <div className="scan-line-horizontal scan-line-1" />
+      <div className="scan-line-horizontal scan-line-2" />
+      <div className="scan-line-vertical scan-line-3" />
+    </div>
+  );
+};
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
@@ -258,230 +418,249 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen bg-black text-gray-300 font-sans overflow-hidden relative">
-      {/* Ambient Background Glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-green-500/10 blur-[120px] rounded-full pointer-events-none z-0" />
+    <div className="flex h-screen bg-black text-gray-100 font-sans overflow-hidden relative">
+      {/* Advanced Cyberpunk Background Effects */}
+      <MatrixRain />
+      <CyberGrid />
+      <NetworkConnections />
+      <DataParticles />
+      <ScanningLines />
 
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-40 bg-[#050505]/95 backdrop-blur-xl border-r border-white/5 flex flex-col transition-transform duration-300 transform md:relative md:translate-x-0 overflow-hidden ${sidebarOpen ? 'translate-x-0 w-[280px] md:w-64' : '-translate-x-full w-[280px] md:w-0'}`}>
-        <div className="p-4 flex items-center justify-between border-b border-white/5 h-16 shrink-0">
+      {/* Enhanced Ambient Glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1200px] h-[800px] bg-green-500/8 blur-[150px] rounded-full pointer-events-none z-1" />
+      <div className="absolute top-1/4 right-1/4 w-[600px] h-[600px] bg-cyan-500/5 blur-[100px] rounded-full pointer-events-none z-1" />
+
+      {/* Enhanced Sidebar with Neon Glow */}
+      <aside className={`fixed inset-y-0 left-0 z-40 cyber-sidebar flex flex-col transition-all duration-300 transform md:relative md:translate-x-0 overflow-hidden ${sidebarOpen ? 'translate-x-0 w-[300px] md:w-80' : '-translate-x-full w-[300px] md:w-0'}`}>
+        {/* Sidebar Glow Effect */}
+        <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-green-500/5 to-transparent blur-xl pointer-events-none" />
+        
+        <div className="relative z-10 h-full flex flex-col">
+          {/* Header */}
+          <div className="p-6 flex items-center justify-between border-b border-green-500/20 h-20 shrink-0">
             <div className="flex items-center space-x-3 overflow-hidden">
-                <div className="bg-green-500/10 p-1.5 rounded border border-green-500/20 shrink-0">
-                    <Terminal size={20} className="text-green-500" />
-                </div>
-                <span className="font-bold text-white tracking-tight whitespace-nowrap truncate">KryptonSec<span className="text-green-500">AI</span></span>
+              <div className="cyber-icon-container">
+                <Terminal size={24} className="text-green-400 bloom" />
+              </div>
+              <span className="font-bold text-white tracking-tight whitespace-nowrap truncate text-lg">
+                KryptonSec<span className="text-green-400">AI</span>
+              </span>
             </div>
-            {/* Mobile Close Button */}
-            <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-400 hover:text-white shrink-0 ml-2">
-                <X size={20} />
+            <button onClick={() => setSidebarOpen(false)} className="md:hidden cyber-button-small">
+              <X size={20} />
             </button>
-        </div>
+          </div>
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {/* New Scan Button */}
+          <div className="p-6">
             <button 
-                onClick={startNewSession}
-                className="w-full flex items-center space-x-3 p-3 bg-green-600 hover:bg-green-500 text-black font-bold rounded-lg transition-all mb-6"
+              onClick={startNewSession}
+              className="cyber-button-primary w-full"
             >
-                <Plus size={18} />
-                <span>New Scan</span>
+              <Plus size={20} />
+              <span>New Scan</span>
             </button>
+          </div>
 
-            <div className="text-xs font-medium text-gray-600 px-3 uppercase tracking-wider mb-2">Menu</div>
+          {/* Navigation Menu */}
+          <div className="flex-1 overflow-y-auto px-6 space-y-2">
+            <div className="text-xs font-medium text-green-400/60 px-3 uppercase tracking-wider mb-4">System Menu</div>
             
-            <Link href="/profile" className="flex items-center space-x-3 p-3 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
-                <User size={18} />
-                <span>Profile</span>
+            <Link href="/profile" className="cyber-nav-item">
+              <User size={20} />
+              <span>Profile</span>
             </Link>
             
             {role === "admin" && (
-                <Link href="/admin" className="flex items-center space-x-3 p-3 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
-                    <Database size={18} />
-                    <span>Admin Panel</span>
-                </Link>
+              <Link href="/admin" className="cyber-nav-item">
+                <Database size={20} />
+                <span>Admin Panel</span>
+              </Link>
             )}
 
             {role === "editor" && (
-                <Link href="/admin" className="flex items-center space-x-3 p-3 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors">
-                    <Upload size={18} />
-                    <span>Upload Knowledge</span>
-                </Link>
+              <Link href="/admin" className="cyber-nav-item">
+                <Upload size={20} />
+                <span>Upload Knowledge</span>
+              </Link>
             )}
 
-            <div className="text-xs font-medium text-gray-600 px-3 uppercase tracking-wider mt-6 mb-2">History</div>
-            <div className="space-y-1">
-                {history.map((session) => (
-                    <button 
-                        key={session.id}
-                        onClick={() => loadSession(session.id)}
-                        className={`w-full flex items-center space-x-3 p-2.5 rounded-lg text-sm text-left transition-colors group ${
-                            sessionId === session.id 
-                                ? "bg-white/10 text-white" 
-                                : "hover:bg-white/5 text-gray-400 hover:text-white"
-                        }`}
-                    >
-                        <MessageSquare size={16} className={`transition-colors ${
-                            sessionId === session.id ? "text-green-500" : "text-gray-600 group-hover:text-green-500"
-                        }`} />
-                        <span className="truncate">{session.title}</span>
-                    </button>
-                ))}
+            <div className="text-xs font-medium text-green-400/60 px-3 uppercase tracking-wider mt-8 mb-4">Session History</div>
+            <div className="space-y-2">
+              {history.map((session) => (
+                <button 
+                  key={session.id}
+                  onClick={() => loadSession(session.id)}
+                  className={`cyber-history-item ${
+                    sessionId === session.id ? "active" : ""
+                  }`}
+                >
+                  <MessageSquare size={18} />
+                  <span className="truncate">{session.title}</span>
+                </button>
+              ))}
             </div>
-        </div>
+          </div>
 
-        <div className="p-4 border-t border-white/5">
-            <button onClick={handleLogout} className="flex items-center space-x-3 text-gray-500 hover:text-red-400 transition-colors w-full p-2">
-                <LogOut size={18} />
-                <span>Sign Out</span>
+          {/* Logout */}
+          <div className="p-6 border-t border-green-500/20">
+            <button onClick={handleLogout} className="cyber-logout-button">
+              <LogOut size={20} />
+              <span>Sign Out</span>
             </button>
+          </div>
         </div>
       </aside>
 
       {/* Overlay for mobile when sidebar is open */}
       {sidebarOpen && (
         <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-30 md:hidden"
-            onClick={() => setSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 md:hidden"
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col relative w-full">
-        {/* Top Navigation */}
-        <header className="h-16 border-b border-white/5 flex items-center justify-between px-4 md:px-6 bg-black/50 backdrop-blur-md absolute top-0 w-full z-10">
-            <div className="flex items-center space-x-4">
-                <button 
-                    onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="p-2 hover:bg-white/5 rounded-lg text-gray-400 hover:text-white transition-colors"
-                >
-                    <Menu size={20} className="md:hidden" />
-                    <Settings size={20} className="hidden md:block" />
-                </button>
-                
-                <div className="relative max-w-[180px] md:max-w-xs">
-                    <button 
-                        onClick={() => setShowModelDropdown(!showModelDropdown)}
-                        className="flex items-center space-x-2 bg-white/5 px-3 py-1.5 rounded-full border border-white/5 hover:bg-white/10 transition-colors w-full"
+        {/* Enhanced Top Navigation */}
+        <header className="h-20 border-b border-green-500/20 flex items-center justify-between px-6 cyber-header absolute top-0 w-full z-20">
+          <div className="flex items-center space-x-6">
+            <button 
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="cyber-button-small"
+            >
+              <Menu size={20} className="md:hidden" />
+              <Settings size={20} className="hidden md:block" />
+            </button>
+            
+            {/* Enhanced Model Selector */}
+            <div className="relative max-w-[200px] md:max-w-xs">
+              <button 
+                onClick={() => setShowModelDropdown(!showModelDropdown)}
+                className="cyber-model-selector"
+              >
+                <div className="status-indicator" />
+                <span className="text-sm font-medium text-gray-200 truncate">
+                  {models.find(m => m.api_model_name === selectedModel)?.display_name || "Select Model"}
+                </span>
+                <ChevronRight size={16} className={`text-green-400 transform transition-transform shrink-0 ${showModelDropdown ? 'rotate-90' : ''}`} />
+              </button>
+              
+              {showModelDropdown && (
+                <div className="cyber-dropdown">
+                  {models.map(model => (
+                    <button
+                      key={model.id}
+                      onClick={() => {
+                        setSelectedModel(model.api_model_name);
+                        setShowModelDropdown(false);
+                      }}
+                      className={`cyber-dropdown-item ${
+                        selectedModel === model.api_model_name ? 'active' : ''
+                      }`}
                     >
-                        <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse shrink-0" />
-                        <span className="text-sm font-medium text-gray-300 truncate">
-                            {models.find(m => m.api_model_name === selectedModel)?.display_name || "Select Model"}
-                        </span>
-                        <ChevronRight size={14} className={`text-gray-500 transform transition-transform shrink-0 ${showModelDropdown ? 'rotate-90' : ''}`} />
+                      <span>{model.display_name}</span>
+                      {selectedModel === model.api_model_name && <Check size={16} className="text-green-400" />}
                     </button>
-                    
-                    {showModelDropdown && (
-                        <div className="absolute top-full left-0 mt-2 w-56 bg-[#0a0a0a] border border-white/10 rounded-lg shadow-xl overflow-hidden z-50">
-                            {models.map(model => (
-                                <button
-                                    key={model.id}
-                                    onClick={() => {
-                                        setSelectedModel(model.api_model_name);
-                                        setShowModelDropdown(false);
-                                    }}
-                                    className={`w-full text-left px-4 py-3 text-sm hover:bg-white/5 transition-colors flex items-center justify-between ${
-                                        selectedModel === model.api_model_name ? 'text-green-500 bg-green-500/5' : 'text-gray-400'
-                                    }`}
-                                >
-                                    <span>{model.display_name}</span>
-                                    {selectedModel === model.api_model_name && <Check size={14} />}
-                                </button>
-                            ))}
-                        </div>
-                    )}
+                  ))}
                 </div>
+              )}
             </div>
-            <div className="flex items-center space-x-4">
-                {/* Right side actions if needed */}
+          </div>
+          
+          {/* System Status */}
+          <div className="flex items-center space-x-4">
+            <div className="cyber-status-panel">
+              <Activity size={16} className="text-green-400" />
+              <span className="text-sm font-mono text-green-400">ONLINE</span>
             </div>
+          </div>
         </header>
 
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto pt-24 pb-32 px-4 scroll-smooth">
-            <div className="max-w-3xl mx-auto space-y-8">
-                {messages.map((msg, idx) => (
-                    <div
-                        key={idx}
-                        className={`flex gap-4 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
-                    >
-                        {/* Avatar */}
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1 ${
-                            msg.role === "user" 
-                                ? "bg-white/10 text-gray-300" 
-                                : "bg-green-500/10 text-green-500 border border-green-500/20"
-                        }`}>
-                            {msg.role === "user" ? <User size={16} /> : <Terminal size={16} />}
-                        </div>
+        {/* Enhanced Messages Area */}
+        <div className="flex-1 overflow-y-auto pt-28 pb-40 px-6 scroll-smooth relative z-10">
+          <div className="max-w-4xl mx-auto space-y-8">
+            {messages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`flex gap-6 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+              >
+                {/* Enhanced Avatar */}
+                <div className={`cyber-avatar ${msg.role === "user" ? "user" : "assistant"}`}>
+                  {msg.role === "user" ? <User size={20} /> : <Terminal size={20} />}
+                </div>
 
-                        {/* Content */}
-                        <div className={`flex-1 max-w-[95%] md:max-w-[85%] ${msg.role === "user" ? "text-right" : "min-w-0"}`}>
-                            <div className={`inline-block text-left ${
-                                msg.role === "user" 
-                                    ? "bg-[#1a1a1a] text-gray-200 px-5 py-3 rounded-2xl rounded-tr-sm border border-white/5 max-w-full break-words" 
-                                    : "text-gray-300 w-full break-words"
-                            }`}>
-                                {msg.role === "user" ? (
-                                    <div className="whitespace-pre-wrap">{msg.content}</div>
-                                ) : (
-                                    <ReactMarkdown 
-                                        components={MarkdownComponents}
-                                        remarkPlugins={[remarkGfm]}
-                                    >
-                                        {msg.content}
-                                    </ReactMarkdown>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                ))}
-                
-                {loading && (
-                    <div className="flex gap-4">
-                        <div className="w-8 h-8 rounded-lg bg-green-500/10 text-green-500 border border-green-500/20 flex items-center justify-center flex-shrink-0 mt-1">
-                            <Terminal size={16} />
-                        </div>
-                        <div className="flex items-center space-x-1.5 mt-2.5">
-                            <div className="w-1.5 h-1.5 bg-green-500/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                            <div className="w-1.5 h-1.5 bg-green-500/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                            <div className="w-1.5 h-1.5 bg-green-500/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                        </div>
-                    </div>
-                )}
-                <div ref={messagesEndRef} />
-            </div>
+                {/* Enhanced Content */}
+                <div className={`flex-1 max-w-[90%] md:max-w-[85%] ${msg.role === "user" ? "text-right" : "min-w-0"}`}>
+                  <div className={`inline-block text-left ${
+                    msg.role === "user" 
+                      ? "cyber-message-user" 
+                      : "cyber-message-assistant"
+                  }`}>
+                    {msg.role === "user" ? (
+                      <div className="whitespace-pre-wrap">{msg.content}</div>
+                    ) : (
+                      <ReactMarkdown 
+                        components={MarkdownComponents}
+                        remarkPlugins={[remarkGfm]}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            {loading && (
+              <div className="flex gap-6">
+                <div className="cyber-avatar assistant">
+                  <Terminal size={20} />
+                </div>
+                <div className="cyber-loading">
+                  <div className="loading-dots">
+                    <div className="loading-dot" style={{ animationDelay: '0ms' }} />
+                    <div className="loading-dot" style={{ animationDelay: '150ms' }} />
+                    <div className="loading-dot" style={{ animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
         </div>
 
-        {/* Input Area */}
-        <div className="absolute bottom-0 w-full bg-gradient-to-t from-black via-black to-transparent pb-8 pt-10 px-4">
-            <div className="max-w-3xl mx-auto relative group">
-                <div className="absolute inset-0 bg-green-500/5 blur-xl rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                <div className="relative bg-[#0a0a0a] border border-white/10 rounded-2xl p-2 flex items-end shadow-2xl">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                sendMessage();
-                            }
-                        }}
-                        placeholder="Analyze vulnerability..."
-                        className="flex-1 bg-transparent border-none text-gray-200 placeholder-gray-600 focus:ring-0 resize-none p-3 min-h-[50px] max-h-[200px] outline-none font-sans"
-                        rows={1}
-                    />
-                    <button
-                        onClick={sendMessage}
-                        disabled={loading || !input.trim()}
-                        className="p-3 bg-green-600 hover:bg-green-500 text-black rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed m-1"
-                    >
-                        <Send size={18} className="font-bold" />
-                    </button>
-                </div>
-                <div className="text-center mt-3">
-                    <p className="text-xs text-gray-600">
-                        Krypton AI can make mistakes. Verify critical vulnerabilities manually.
-                    </p>
-                </div>
+        {/* Enhanced Input Area */}
+        <div className="absolute bottom-0 w-full cyber-input-area">
+          <div className="max-w-4xl mx-auto relative">
+            <div className="cyber-input-container">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                  }
+                }}
+                placeholder="Analyze vulnerability, scan for threats..."
+                className="cyber-textarea"
+                rows={1}
+              />
+              <button
+                onClick={sendMessage}
+                disabled={loading || !input.trim()}
+                className="cyber-send-button"
+              >
+                <Send size={20} />
+              </button>
             </div>
+            <div className="text-center mt-4">
+              <p className="text-xs text-green-400/60 font-mono">
+                KRYPTON AI • SECURE CHANNEL • VERIFY CRITICAL VULNERABILITIES MANUALLY
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </div>

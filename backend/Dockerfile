@@ -32,8 +32,8 @@ RUN mkdir src && \
 # Copy source code
 COPY . .
 
-# Copy local embedding model cache if present
-COPY .fastembed_cache /usr/src/app/fastembed_cache
+# Copy local embedding model cache if present (optional)
+RUN mkdir -p /usr/src/app/fastembed_cache
 
 # Build application
 # We touch the main file to ensure cargo rebuilds it
@@ -60,8 +60,8 @@ ENV ORT_DYLIB_PATH=/usr/lib/libonnxruntime.so.1.19.2
 # Copy binary from builder
 COPY --from=builder /usr/src/app/target/release/backend /app/backend
 
-# Copy embedding model cache
-COPY --from=builder /usr/src/app/fastembed_cache /app/fastembed_cache
+# Create embedding model cache directory
+RUN mkdir -p /app/fastembed_cache
 
 # Create uploads directory
 RUN mkdir -p /app/uploads

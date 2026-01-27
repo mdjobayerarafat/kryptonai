@@ -9,48 +9,50 @@ export default function Navbar() {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-black/50 backdrop-blur-md sticky top-0 z-50">
-      <Link href="/" className="flex items-center space-x-2 text-white hover:text-green-400 transition-colors cursor-pointer group">
-        <div className="p-1 bg-green-500/10 rounded border border-green-500/20 group-hover:border-green-500/50 transition-colors">
-          <Terminal size={20} className="text-green-500" />
+    <nav className="flex items-center justify-between px-8 py-6 glass-panel sticky top-0 z-50 mx-4 mt-4 rounded-2xl">
+      <Link href="/" className="flex items-center space-x-3 text-white hover:text-green-400 transition-colors cursor-pointer group">
+        <div className="p-2 glass-panel rounded-xl group-hover:bg-green-500/20 transition-colors bloom">
+          <Terminal size={24} className="neon-text" />
         </div>
-        <span className="text-lg font-bold tracking-tight">KryptonSec<span className="text-green-500">AI</span></span>
+        <span className="text-xl font-bold tracking-tight">
+          KryptonSec<span className="neon-text">AI</span>
+        </span>
       </Link>
       
-      <div className="hidden md:flex items-center space-x-8 text-sm font-medium text-gray-400">
+      <div className="hidden md:flex items-center space-x-8 text-sm font-medium">
         <Link 
             href="/features" 
-            className={`transition-colors ${isActive('/features') ? 'text-green-400' : 'hover:text-white'}`}
+            className={`transition-colors px-4 py-2 rounded-lg ${isActive('/features') ? 'neon-text glass-panel' : 'text-gray-300 hover:text-green-400'}`}
         >
             Features
         </Link>
         <Link 
             href="/solutions" 
-            className={`transition-colors ${isActive('/solutions') ? 'text-green-400' : 'hover:text-white'}`}
+            className={`transition-colors px-4 py-2 rounded-lg ${isActive('/solutions') ? 'neon-text glass-panel' : 'text-gray-300 hover:text-green-400'}`}
         >
             Solutions
         </Link>
         <Link 
             href="/resources" 
-            className={`transition-colors ${isActive('/resources') ? 'text-green-400' : 'hover:text-white'}`}
+            className={`transition-colors px-4 py-2 rounded-lg ${isActive('/resources') ? 'neon-text glass-panel' : 'text-gray-300 hover:text-green-400'}`}
         >
             Resources
         </Link>
         <Link 
             href="/pricing" 
-            className={`transition-colors ${isActive('/pricing') ? 'text-green-400' : 'hover:text-white'}`}
+            className={`transition-colors px-4 py-2 rounded-lg ${isActive('/pricing') ? 'neon-text glass-panel' : 'text-gray-300 hover:text-green-400'}`}
         >
             Pricing
         </Link>
       </div>
 
       <div className="flex items-center space-x-4">
-        <Link href="/login" className="text-sm font-medium text-gray-300 hover:text-white transition-colors">
+        <Link href="/login" className="text-sm font-medium text-gray-300 hover:text-green-400 transition-colors glass-panel px-4 py-2 rounded-lg">
           Log in
         </Link>
         <Link 
           href="/register" 
-          className="px-4 py-2 bg-green-600 hover:bg-green-500 text-black text-sm font-bold rounded transition-all shadow-[0_0_15px_-3px_rgba(22,163,74,0.4)] hover:shadow-[0_0_20px_-3px_rgba(22,163,74,0.6)]"
+          className="cyber-button text-sm"
         >
           Sign Up
         </Link>
