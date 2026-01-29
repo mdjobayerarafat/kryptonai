@@ -2,70 +2,62 @@
 import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { ChevronDown, ChevronRight, FileText, Book, Settings, Code, Database, Shield, Users, Zap } from "lucide-react";
+import { 
+  ChevronDown, ChevronRight, FileText, Book, Settings, Code, 
+  Database, Shield, Users, Zap, MessageSquare, Cpu, Sparkles, 
+  Lightbulb, Command, Terminal, Key, Search
+} from "lucide-react";
 
 // Sidebar Navigation Data
 const navigationSections = [
   {
-    title: "Getting Started",
+    title: "Platform Overview",
     icon: <Book size={16} />,
     items: [
-      { title: "What is KryptonSecAI?", href: "#what-is-kryptonsecai", active: true },
-      { title: "Quick Start Guide", href: "#quick-start" },
-      { title: "Installation", href: "#installation" },
+      { title: "Welcome", href: "#welcome", active: true },
+      { title: "Dashboard Tour", href: "#dashboard-tour" },
     ]
   },
   {
-    title: "Project Structure",
-    icon: <FileText size={16} />,
+    title: "Chat & Models",
+    icon: <MessageSquare size={16} />,
     items: [
-      { title: "System Architecture", href: "#system-architecture" },
-      { title: "RAG Pipeline", href: "#rag-pipeline" },
-      { title: "Model Catalog", href: "#model-catalog" },
+      { title: "Starting a Chat", href: "#starting-chat" },
+      { title: "Selecting Models", href: "#selecting-models" },
+      { title: "Session History", href: "#session-history" },
     ]
   },
   {
-    title: "Configuration",
-    icon: <Settings size={16} />,
+    title: "Prompt Engineering",
+    icon: <Sparkles size={16} />,
     items: [
-      { title: "Environment Setup", href: "#environment-setup" },
-      { title: "Docker Deployment", href: "#docker-deployment" },
-      { title: "Database Configuration", href: "#database-config" },
+      { title: "Prompting Basics", href: "#prompting-basics" },
+      { title: "Cybersecurity Prompts", href: "#cyber-prompts" },
+      { title: "Advanced Techniques", href: "#advanced-techniques" },
     ]
   },
   {
-    title: "API Reference",
-    icon: <Code size={16} />,
+    title: "Features",
+    icon: <Zap size={16} />,
     items: [
-      { title: "Authentication", href: "#authentication" },
-      { title: "Chat Endpoints", href: "#chat-endpoints" },
-      { title: "Document Management", href: "#document-management" },
-    ]
-  },
-  {
-    title: "User Management",
-    icon: <Users size={16} />,
-    items: [
-      { title: "Admin Roles", href: "#admin-roles" },
+      { title: "RAG Knowledge Base", href: "#rag-knowledge" },
       { title: "Voucher System", href: "#voucher-system" },
-      { title: "Access Control", href: "#access-control" },
     ]
   }
 ];
 
 // Table of Contents Data
 const tableOfContents = [
-  { title: "Overview", href: "#overview" },
-  { title: "Key Features", href: "#key-features" },
-  { title: "Architecture", href: "#architecture" },
-  { title: "Getting Started", href: "#getting-started" },
-  { title: "Configuration", href: "#configuration" },
-  { title: "Deployment", href: "#deployment" },
+  { title: "Welcome", href: "#welcome" },
+  { title: "Chat Interface", href: "#starting-chat" },
+  { title: "Model Selection", href: "#selecting-models" },
+  { title: "Prompting Guide", href: "#prompting-basics" },
+  { title: "Advanced Tips", href: "#advanced-techniques" },
 ];
 
 // Sidebar Component
 const Sidebar = () => {
-  const [expandedSections, setExpandedSections] = useState<string[]>(["Getting Started"]);
+  const [expandedSections, setExpandedSections] = useState<string[]>(["Platform Overview", "Chat & Models", "Prompt Engineering"]);
 
   const toggleSection = (sectionTitle: string) => {
     setExpandedSections(prev => 
@@ -76,11 +68,11 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="w-64 bg-[#0a0a0a] border-r border-gray-800 h-screen sticky top-0 overflow-y-auto">
+    <div className="hidden lg:block w-64 bg-[#0a0a0a] border-r border-gray-800 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
       <div className="p-6">
         <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
           <FileText size={20} className="text-green-500" />
-          Documentation
+          User Guide
         </h2>
         
         <nav className="space-y-2">
@@ -127,7 +119,7 @@ const Sidebar = () => {
 
 // Table of Contents Component
 const TableOfContents = () => {
-  const [activeSection, setActiveSection] = useState("#overview");
+  const [activeSection, setActiveSection] = useState("#welcome");
 
   useEffect(() => {
     const handleScroll = () => {
@@ -136,7 +128,7 @@ const TableOfContents = () => {
         const element = document.getElementById(section);
         if (element) {
           const rect = element.getBoundingClientRect();
-          return rect.top <= 100 && rect.bottom >= 100;
+          return rect.top <= 150 && rect.bottom >= 150;
         }
         return false;
       });
@@ -151,7 +143,7 @@ const TableOfContents = () => {
   }, []);
 
   return (
-    <div className="w-64 bg-[#0a0a0a] border-l border-gray-800 h-screen sticky top-0 overflow-y-auto">
+    <div className="hidden xl:block w-64 bg-[#0a0a0a] border-l border-gray-800 h-[calc(100vh-64px)] sticky top-16 overflow-y-auto">
       <div className="p-6">
         <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
           On This Page
@@ -176,16 +168,15 @@ const TableOfContents = () => {
   );
 };
 
-// Code Block Component
-const CodeBlock = ({ children, language = "bash" }: { children: string, language?: string }) => {
+// Prompt Block Component
+const PromptBlock = ({ title, prompt, explanation }: { title?: string, prompt: string, explanation?: string }) => {
   return (
-    <div className="bg-[#111] border border-gray-800 rounded-lg p-4 my-6">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-500 uppercase tracking-wider">{language}</span>
+    <div className="bg-[#111] border border-gray-800 rounded-lg p-5 my-6">
+      {title && <div className="text-sm font-semibold text-green-400 mb-2 uppercase tracking-wide">{title}</div>}
+      <div className="bg-black/50 p-4 rounded border border-gray-800 font-mono text-sm text-gray-300 whitespace-pre-wrap mb-3">
+        {prompt}
       </div>
-      <pre className="text-sm text-gray-300 overflow-x-auto">
-        <code>{children}</code>
-      </pre>
+      {explanation && <p className="text-sm text-gray-500 italic">{explanation}</p>}
     </div>
   );
 };
@@ -200,155 +191,184 @@ export default function ResourcesPage() {
         <Sidebar />
         
         {/* Main Content */}
-        <main className="flex-1 max-w-4xl mx-auto px-8 py-12">
+        <main className="flex-1 max-w-4xl mx-auto px-6 md:px-12 py-12">
           <div className="prose prose-invert max-w-none">
             {/* Page Header */}
             <div className="mb-12">
-              <h1 id="overview" className="text-5xl font-bold text-white mb-4 tracking-tight">
-                What is KryptonSecAI?
+              <h1 id="welcome" className="text-5xl font-bold text-white mb-4 tracking-tight">
+                Documentation & Resources
               </h1>
               <p className="text-xl text-gray-400 leading-relaxed">
-                A comprehensive AI-powered cybersecurity platform designed for security teams, 
-                researchers, and educational institutions.
+                Master the art of AI-driven cybersecurity analysis with KryptonSecAI. 
+                Learn how to effectively use our tools and craft high-impact prompts.
               </p>
             </div>
 
-            {/* Key Features Section */}
-            <section id="key-features" className="mb-16">
+            {/* Dashboard Tour */}
+            <section id="dashboard-tour" className="mb-16">
               <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
-                <Zap className="text-green-500" size={28} />
-                Key Features
+                <Book className="text-green-500" size={28} />
+                Dashboard Tour
               </h2>
               
               <div className="grid md:grid-cols-2 gap-6 mb-8">
-                <div className="bg-[#0a0a0a] border border-gray-800 rounded-lg p-6">
+                <div className="bg-[#0a0a0a] border border-gray-800 rounded-lg p-6 hover:border-green-500/50 transition-colors">
                   <div className="flex items-center gap-3 mb-3">
-                    <Shield className="text-green-500" size={20} />
-                    <h3 className="text-lg font-semibold text-white">Knowledge-Driven Answers</h3>
+                    <MessageSquare className="text-green-500" size={20} />
+                    <h3 className="text-lg font-semibold text-white">Chat Interface</h3>
                   </div>
                   <p className="text-gray-400 text-sm">
-                    RAG-powered responses grounded in your internal documents and curated security context.
+                    The central hub for your analysis. Interact with various AI models, upload files for context, and receive real-time security insights.
                   </p>
                 </div>
                 
-                <div className="bg-[#0a0a0a] border border-gray-800 rounded-lg p-6">
+                <div className="bg-[#0a0a0a] border border-gray-800 rounded-lg p-6 hover:border-blue-500/50 transition-colors">
                   <div className="flex items-center gap-3 mb-3">
                     <Database className="text-blue-500" size={20} />
-                    <h3 className="text-lg font-semibold text-white">Model Control</h3>
+                    <h3 className="text-lg font-semibold text-white">Knowledge Base</h3>
                   </div>
                   <p className="text-gray-400 text-sm">
-                    Choose from OpenRouter models, activate what you need, and keep outputs consistent.
+                    KryptonSecAI has access to a curated database of cybersecurity knowledge, ensuring responses are grounded in verified security practices.
                   </p>
                 </div>
               </div>
             </section>
 
-            {/* Architecture Section */}
-            <section id="architecture" className="mb-16">
-              <h2 className="text-3xl font-bold text-white mb-6">System Architecture</h2>
+            {/* Chat & Models */}
+            <section id="starting-chat" className="mb-16">
+              <h2 className="text-3xl font-bold text-white mb-6">Using the Chat Interface</h2>
               <p className="text-gray-300 mb-6 leading-relaxed">
-                KryptonSecAI follows a modern microservices architecture with the following components:
+                The chat interface is designed for rapid security analysis. Here's how to get the most out of it:
               </p>
               
-              <ul className="space-y-3 mb-8 text-gray-300">
-                <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span><strong className="text-white">Frontend:</strong> Next.js application with Tailwind CSS</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span><strong className="text-white">Backend:</strong> Rust-based API server with Axum framework</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span><strong className="text-white">Database:</strong> PostgreSQL with pgvector for embeddings</span>
-                </li>
-                <li className="flex items-start gap-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
-                  <span><strong className="text-white">AI Models:</strong> Integration with OpenRouter API</span>
-                </li>
-              </ul>
-            </section>
-
-            {/* Getting Started Section */}
-            <section id="getting-started" className="mb-16">
-              <h2 className="text-3xl font-bold text-white mb-6">Getting Started</h2>
-              <p className="text-gray-300 mb-6 leading-relaxed">
-                Follow these steps to set up KryptonSecAI in your local development environment.
-              </p>
-
-              <h3 className="text-xl font-semibold text-white mb-4">Prerequisites</h3>
-              <ul className="space-y-2 mb-6 text-gray-300">
-                <li>• Docker and Docker Compose</li>
-                <li>• Node.js 18+ and npm</li>
-                <li>• Rust 1.70+ (for backend development)</li>
-              </ul>
-
-              <h3 className="text-xl font-semibold text-white mb-4">Installation</h3>
-              <CodeBlock language="bash">
-{`# Clone the repository
-git clone https://github.com/your-org/kryptonsecai.git
-cd kryptonsecai
-
-# Start the services
-docker-compose up -d
-
-# Install frontend dependencies
-cd frontend
-npm install
-npm run dev`}
-              </CodeBlock>
-            </section>
-
-            {/* Configuration Section */}
-            <section id="configuration" className="mb-16">
-              <h2 className="text-3xl font-bold text-white mb-6">Configuration</h2>
-              <p className="text-gray-300 mb-6 leading-relaxed">
-                Configure your environment variables and settings for optimal performance.
-              </p>
-
-              <h3 className="text-xl font-semibold text-white mb-4">Environment Variables</h3>
-              <CodeBlock language="env">
-{`# Backend Configuration
-DATABASE_URL=postgres://krypton:password@localhost:5432/krypton_db
-OPENROUTER_API_KEY=your_openrouter_api_key
-RUST_LOG=info
-PORT=8080
-
-# Frontend Configuration
-NEXT_PUBLIC_API_URL=http://localhost:8080`}
-              </CodeBlock>
-            </section>
-
-            {/* Deployment Section */}
-            <section id="deployment" className="mb-16">
-              <h2 className="text-3xl font-bold text-white mb-6">Deployment</h2>
-              <p className="text-gray-300 mb-6 leading-relaxed">
-                Deploy KryptonSecAI to production using Docker containers.
-              </p>
-
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-6 mb-6">
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-xs text-white font-bold">i</span>
-                  </div>
+              <div className="space-y-6">
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 font-bold shrink-0">1</div>
                   <div>
-                    <h4 className="text-blue-400 font-semibold mb-2">Production Deployment</h4>
-                    <p className="text-gray-300 text-sm">
-                      Make sure to update your environment variables and secure your database 
-                      before deploying to production.
-                    </p>
+                    <h3 className="text-xl font-semibold text-white mb-2">Start a New Session</h3>
+                    <p className="text-gray-400">Click the <span className="text-green-400 font-mono">+ New Scan</span> button to clear the context. Always start a new session when switching between unrelated tasks (e.g., moving from "Network Analysis" to "Code Review") to prevent the AI from getting confused by previous context.</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center text-green-500 font-bold shrink-0">2</div>
+                  <div id="selecting-models">
+                    <h3 className="text-xl font-semibold text-white mb-2">Select the Right Model</h3>
+                    <p className="text-gray-400 mb-4">Choose a model based on your specific task:</p>
+                    <div className="grid gap-4">
+                      <div className="border border-gray-800 rounded p-4 bg-gray-900/50">
+                        <div className="font-bold text-white mb-1">DeepSeek-R1 (Recommended)</div>
+                        <div className="text-sm text-gray-400">Best for: <span className="text-green-400">Logic, Code Analysis, Vulnerability Research</span>. This model excels at reasoning through complex security problems step-by-step.</div>
+                      </div>
+                      <div className="border border-gray-800 rounded p-4 bg-gray-900/50">
+                        <div className="font-bold text-white mb-1">Llama 3 / Mistral</div>
+                        <div className="text-sm text-gray-400">Best for: <span className="text-blue-400">General Explanations, Summaries, Reports</span>. Use these for faster, high-level overviews or writing executive summaries.</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
+            </section>
 
-              <CodeBlock language="bash">
-{`# Build and deploy with Docker
-docker-compose -f docker-compose.prod.yml up -d
+            {/* Prompt Engineering Guide */}
+            <section id="prompting-basics" className="mb-16">
+              <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                <Sparkles className="text-purple-500" size={28} />
+                Prompt Engineering for Security
+              </h2>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                The quality of the AI's output depends heavily on how you phrase your request. In cybersecurity, precision is key.
+              </p>
 
-# Check service status
-docker-compose ps`}
-              </CodeBlock>
+              <div className="bg-purple-500/5 border border-purple-500/20 rounded-xl p-6 mb-8">
+                <h3 className="text-lg font-bold text-purple-400 mb-4">The Golden Rule: Context + Specificity + Role</h3>
+                <ul className="space-y-3 text-gray-300">
+                  <li className="flex gap-2"><CheckCircle className="text-green-500 shrink-0" size={18} /> <strong>Context:</strong> Provide background (e.g., "I am analyzing a Python Flask app...").</li>
+                  <li className="flex gap-2"><CheckCircle className="text-green-500 shrink-0" size={18} /> <strong>Specificity:</strong> Ask for exactly what you want (e.g., "Identify SQL injection vulnerabilities...").</li>
+                  <li className="flex gap-2"><CheckCircle className="text-green-500 shrink-0" size={18} /> <strong>Role:</strong> Tell the AI who to be (e.g., "Act as a Senior Penetration Tester").</li>
+                </ul>
+              </div>
+
+              <h3 id="cyber-prompts" className="text-xl font-semibold text-white mb-4 mt-8">Example Scenarios</h3>
+
+              <div className="space-y-8">
+                {/* Scenario 1 */}
+                <div>
+                  <h4 className="text-lg font-medium text-white mb-2">Scenario 1: Code Review</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="opacity-60">
+                      <div className="text-xs uppercase text-red-400 font-bold mb-1">❌ Poor Prompt</div>
+                      <div className="bg-red-950/20 border border-red-900/30 p-3 rounded text-sm">
+                        "Is this code safe?"
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase text-green-400 font-bold mb-1">✅ Better Prompt</div>
+                      <div className="bg-green-950/20 border border-green-900/30 p-3 rounded text-sm">
+                        "Analyze the following Python snippet for OWASP Top 10 vulnerabilities, specifically focusing on Input Validation and SQL Injection. Explain how an attacker might exploit any findings."
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Scenario 2 */}
+                <div>
+                  <h4 className="text-lg font-medium text-white mb-2">Scenario 2: Log Analysis</h4>
+                  <PromptBlock 
+                    title="Log Analysis Template"
+                    prompt="Act as a SOC Analyst. Review the following Apache access logs. Identify any suspicious IP addresses attempting path traversal attacks (looking for '../' or '%2e%2e'). Summarize the timeline of the attack and recommend firewall rules to block them."
+                    explanation="This prompt sets the role (SOC Analyst), defines the task (review logs), specifies the attack vector (path traversal), and requests specific outputs (timeline + rules)."
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Advanced Techniques */}
+            <section id="advanced-techniques" className="mb-16">
+              <h2 className="text-3xl font-bold text-white mb-6">Advanced Techniques</h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-2 mb-2">
+                    <Terminal size={20} className="text-yellow-500" />
+                    Chain-of-Thought Prompting
+                  </h3>
+                  <p className="text-gray-400 mb-3">
+                    For complex logic, ask the AI to "think step-by-step". This forces the model to break down the problem, reducing hallucinations.
+                  </p>
+                  <PromptBlock 
+                    prompt="I have a base64 encoded string that I suspect contains a hidden payload. Think step-by-step: 1) Decode the string, 2) Identify the file signature, 3) Analyze the metadata. Here is the string: ..."
+                  />
+                </div>
+
+                <div>
+                  <h3 className="text-xl font-semibold text-white flex items-center gap-2 mb-2">
+                    <Shield size={20} className="text-blue-500" />
+                    Adversarial Simulation
+                  </h3>
+                  <p className="text-gray-400 mb-3">
+                    Use the AI to simulate an attacker's perspective to validate your defenses.
+                  </p>
+                  <PromptBlock 
+                    prompt="You are a Red Team operator. I have implemented a rate-limiting mechanism on my login API (allows 5 attempts per minute per IP). Propose 3 distinct methods you would use to bypass this restriction."
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section id="rag-knowledge" className="mb-16">
+               <h2 className="text-3xl font-bold text-white mb-6">RAG Knowledge Base</h2>
+               <p className="text-gray-300 mb-4">
+                 KryptonSecAI isn't just a chatbot; it's connected to a live knowledge base. When you ask questions, the system:
+               </p>
+               <ol className="list-decimal list-inside space-y-2 text-gray-400 ml-4">
+                 <li>Semantically searches our internal vector database for relevant security documentation, CVEs, and threat reports.</li>
+                 <li>Retrieves the most relevant "chunks" of information.</li>
+                 <li>Feeds this context to the AI model alongside your question.</li>
+               </ol>
+               <p className="text-gray-300 mt-4">
+                 <strong>Tip:</strong> You don't need to copy-paste public CVE details. Just ask "What are the mitigation steps for CVE-2023-xxxx?" and the system will likely retrieve the official data for you.
+               </p>
             </section>
 
             <hr className="border-gray-800 my-12" />
@@ -357,12 +377,12 @@ docker-compose ps`}
             <div className="flex justify-between items-center pt-8">
               <div>
                 <p className="text-sm text-gray-500">
-                  Last updated: January 2025
+                  Last updated: January 2026
                 </p>
               </div>
               <div className="flex gap-4">
-                <a href="#" className="text-sm text-green-400 hover:text-green-300 transition-colors">
-                  Edit this page →
+                <a href="/chat" className="text-sm text-green-400 hover:text-green-300 transition-colors font-medium">
+                  Go to Chat →
                 </a>
               </div>
             </div>
@@ -373,5 +393,25 @@ docker-compose ps`}
         <TableOfContents />
       </div>
     </div>
+  );
+}
+
+function CheckCircle({ className, size }: { className?: string, size?: number }) {
+  return (
+    <svg 
+      xmlns="http://www.w3.org/2000/svg" 
+      width={size || 24} 
+      height={size || 24} 
+      viewBox="0 0 24 24" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round" 
+      className={className}
+    >
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+      <polyline points="22 4 12 14.01 9 11.01"></polyline>
+    </svg>
   );
 }
