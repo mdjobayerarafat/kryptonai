@@ -71,9 +71,9 @@ impl RagSystem {
         Ok(chunks)
     }
 
-    pub async fn list_documents(&self) -> Result<Vec<crate::models::Document>, Box<dyn std::error::Error>> {
-        let rows = sqlx::query_as::<_, crate::models::Document>(
-            "SELECT id, content, metadata, embedding FROM documents ORDER BY id DESC"
+    pub async fn list_documents(&self) -> Result<Vec<crate::models::DocumentSummary>, Box<dyn std::error::Error>> {
+        let rows = sqlx::query_as::<_, crate::models::DocumentSummary>(
+            "SELECT id, content, metadata FROM documents ORDER BY id DESC LIMIT 100"
         )
         .fetch_all(&self.pool)
         .await?;

@@ -10,6 +10,13 @@ pub struct Document {
     pub embedding: Vector,
 }
 
+#[derive(Serialize, Deserialize, Debug, sqlx::FromRow)]
+pub struct DocumentSummary {
+    pub id: String,
+    pub content: String,
+    pub metadata: Option<String>,
+}
+
 fn default_vector() -> Vector {
     Vector::from(vec![])
 }
