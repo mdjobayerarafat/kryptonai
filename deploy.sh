@@ -4,7 +4,7 @@
 set -e
 
 DOMAIN="kryptonsecai.nextsoft.live"
-API_URL="http://$DOMAIN"
+API_URL="https://$DOMAIN"
 
 echo "🚀 Starting deployment for $DOMAIN..."
 
@@ -16,11 +16,11 @@ if ! command -v docker &> /dev/null; then
     rm get-docker.sh
 fi
 
-# 2. Install Nginx
+# 2. Install Nginx & Certbot
 if ! command -v nginx &> /dev/null; then
-    echo "Installing Nginx..."
+    echo "Installing Nginx & Certbot..."
     apt-get update
-    apt-get install -y nginx
+    apt-get install -y nginx certbot python3-certbot-nginx
 fi
 
 # 3. Configure Nginx
@@ -31,7 +31,16 @@ rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
 
-# 4. Check for Backend Environment Variables
+# 4. Setup SSL with Certbot (No Redirect - Keep HTTP & HTTPS)
+echo "🔒 Setting up SSL..."
+# Run certbot to install certificate but DO NOT force redirect to HTTPS
+if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "admin@$DOMAIN" --no-redirect; then
+    echo "✅ SSL configured successfully (HTTP and HTTPS both enabled)"
+else
+    echo "⚠️  SSL setup failed or already configured. Proceeding..."
+fi
+
+# 5. Check for Backend Environment Variables
 if [ ! -f backend/.env ]; then
     echo "⚠️  WARNING: backend/.env not found!"
     echo "Creating backend/.env from example..."
