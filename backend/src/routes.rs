@@ -1195,43 +1195,57 @@ async fn process_knowledge_file(state: web::Data<AppState>, file_path: String) -
         let mut status = state.import_status.lock().unwrap();
         status.is_processing = true;
         status.processed_documents = 0;
-        status.total_documents = 0; // Unknown initially
+        status.total_documents = 0;
         status.errors = 0;
         status.current_file = file_path.clone();
-        status.message = "Starting import...".to_string();
+        status.message = "Parsing file...".to_string();
     }
 
-    let stream = serde_json::Deserializer::from_reader(reader).into_iter::<CreateDocumentRequest>();
+    // Try to parse as a JSON Array first (most common)
+    let documents: Vec<CreateDocumentRequest> = match serde_json::from_reader(&mut reader) {
+        Ok(docs) => docs,
+        Err(_) => {
+            // If array parsing fails, try to rewind and parse as JSON Lines / Stream
+            // Re-open file since BufReader might be consumed
+            let file = std::fs::File::open(&file_path)?;
+            let reader = std::io::BufReader::new(file);
+            let stream = serde_json::Deserializer::from_reader(reader).into_iter::<CreateDocumentRequest>();
+            
+            let mut docs = Vec::new();
+            for res in stream {
+                if let Ok(doc) = res {
+                    docs.push(doc);
+                }
+            }
+            docs
+        }
+    };
+
+    let total_docs = documents.len();
+    {
+        let mut status = state.import_status.lock().unwrap();
+        status.total_documents = total_docs;
+        status.message = format!("Starting import of {} documents...", total_docs);
+    }
     
-    println!("Starting import of documents from {}", file_path);
+    println!("Starting import of {} documents from {}", total_docs, file_path);
     
     let mut count = 0;
     let mut error_count = 0;
     
-    for doc_result in stream {
-        match doc_result {
-            Ok(doc) => {
-                 if let Err(e) = state.rag.add_document(&doc.content, doc.metadata).await {
-                     eprintln!("Failed to add document: {}", e);
-                     error_count += 1;
-                 } else {
-                     count += 1;
-                     if count % 10 == 0 {
-                         let mut status = state.import_status.lock().unwrap();
-                         status.processed_documents = count;
-                         status.errors = error_count;
-                         status.message = format!("Processed {} documents...", count);
-                     }
-                 }
-            },
-            Err(e) => {
-                eprintln!("Failed to parse document at index {}: {}", count + error_count, e);
-                error_count += 1;
-                // Don't break on single error, try next? JSON array parser might fail completely if structure invalid.
-                // serde_json stream iterator usually stops on error.
-                break;
-            }
-        }
+    for doc in documents {
+         if let Err(e) = state.rag.add_document(&doc.content, doc.metadata).await {
+             eprintln!("Failed to add document: {}", e);
+             error_count += 1;
+         } else {
+             count += 1;
+             if count % 10 == 0 {
+                 let mut status = state.import_status.lock().unwrap();
+                 status.processed_documents = count;
+                 status.errors = error_count;
+                 status.message = format!("Processed {}/{} documents...", count, total_docs);
+             }
+         }
     }
     
     println!("Finished processing {}. Imported: {}, Errors: {}", file_path, count, error_count);
