@@ -1181,7 +1181,7 @@ pub async fn upload_file(
 
 async fn process_knowledge_file(state: web::Data<AppState>, file_path: String) -> Result<(), Box<dyn std::error::Error>> {
     let file = std::fs::File::open(&file_path)?;
-    let reader = std::io::BufReader::new(file);
+    let mut reader = std::io::BufReader::new(file);
     
     // Count total items first (inefficient for huge files but needed for progress bar)
     // Or just stream and update processed count without total (indeterminate progress bar if total unknown)

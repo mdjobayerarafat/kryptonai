@@ -10,8 +10,6 @@ pub struct RagSystem {
     pub pool: DbPool,
 }
 
-use std::path::PathBuf;
-
 impl RagSystem {
     pub fn new(pool: DbPool) -> Self {
         let options = InitOptions::new(EmbeddingModel::AllMiniLML6V2)
