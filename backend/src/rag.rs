@@ -3,9 +3,10 @@ use sqlx::Row;
 use crate::db::DbPool;
 use crate::models::RAGChunk;
 use pgvector::Vector;
+use std::sync::Mutex;
 
 pub struct RagSystem {
-    model: TextEmbedding,
+    model: Mutex<TextEmbedding>,
     pub pool: DbPool,
 }
 
@@ -13,35 +14,18 @@ use std::path::PathBuf;
 
 impl RagSystem {
     pub fn new(pool: DbPool) -> Self {
-        let mut options = InitOptions::default();
-        options.model_name = EmbeddingModel::AllMiniLML6V2;
-        options.show_download_progress = true;
-
-        // Check for pre-downloaded cache in Docker or local
-        let docker_cache = PathBuf::from("/app/fastembed_cache");
-        let local_cache = PathBuf::from(".fastembed_cache");
-        let local_cache_alt = PathBuf::from("fastembed_cache");
-
-        if docker_cache.exists() {
-            println!("Using pre-downloaded model cache at {:?}", docker_cache);
-            options.cache_dir = docker_cache;
-        } else if local_cache.exists() {
-            println!("Using local model cache at {:?}", local_cache);
-            options.cache_dir = local_cache;
-        } else if local_cache_alt.exists() {
-            println!("Using local model cache at {:?}", local_cache_alt);
-            options.cache_dir = local_cache_alt;
-        }
+        let options = InitOptions::new(EmbeddingModel::AllMiniLML6V2)
+            .with_show_download_progress(true);
 
         let model = TextEmbedding::try_new(options)
-        .expect("Failed to load embedding model");
+            .expect("Failed to load embedding model");
 
-        Self { model, pool }
+        Self { model: Mutex::new(model), pool }
     }
 
     pub async fn add_document(&self, content: &str, metadata: Option<serde_json::Value>) -> Result<String, Box<dyn std::error::Error>> {
         let documents = vec![content.to_string()];
-        let embeddings = self.model.embed(documents, None)?;
+        let embeddings = self.model.lock().unwrap().embed(documents, None)?;
         let embedding = Vector::from(embeddings[0].clone());
 
         let id = uuid::Uuid::new_v4().to_string();
@@ -61,7 +45,7 @@ impl RagSystem {
     }
 
     pub async fn search(&self, query: &str, limit: usize) -> Result<Vec<RAGChunk>, Box<dyn std::error::Error>> {
-        let query_embedding = self.model.embed(vec![query.to_string()], None)?;
+        let query_embedding = self.model.lock().unwrap().embed(vec![query.to_string()], None)?;
         let query_vec = Vector::from(query_embedding[0].clone());
 
         // Use pgvector cosine distance operator <=>
@@ -99,7 +83,7 @@ impl RagSystem {
 
     pub async fn update_document(&self, id: &str, content: &str, metadata: Option<serde_json::Value>) -> Result<(), Box<dyn std::error::Error>> {
         let documents = vec![content.to_string()];
-        let embeddings = self.model.embed(documents, None)?;
+        let embeddings = self.model.lock().unwrap().embed(documents, None)?;
         let embedding = Vector::from(embeddings[0].clone());
         let metadata_str = metadata.map(|m| m.to_string());
 
