@@ -252,7 +252,8 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .app_data(app_state.clone())
-            .app_data(web::JsonConfig::default().limit(250 * 1024 * 1024)) // 250MB limit
+            .app_data(web::JsonConfig::default().limit(250 * 1024 * 1024)) // 250MB limit for JSON
+            .app_data(web::PayloadConfig::new(1024 * 1024 * 1024)) // 1GB limit for Payload (Multipart)
             .service(routes::health_check)
             .service(routes::register)
             .service(routes::login)

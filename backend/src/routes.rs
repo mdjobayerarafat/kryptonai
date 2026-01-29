@@ -1151,20 +1151,36 @@ async fn process_knowledge_file(state: web::Data<AppState>, file_path: String) -
     let file = std::fs::File::open(&file_path)?;
     let reader = std::io::BufReader::new(file);
     
-    // Attempt to parse as array of CreateDocumentRequest
-    // This loads everything into memory. 
-    // For 500MB JSON, this might take 1-2GB RAM.
-    let docs: Vec<CreateDocumentRequest> = serde_json::from_reader(reader)?;
+    // Use stream deserializer to handle large files and reduce memory usage
+    let stream = serde_json::Deserializer::from_reader(reader).into_iter::<CreateDocumentRequest>();
     
-    println!("Processing {} documents...", docs.len());
+    println!("Starting import of documents from {}", file_path);
     
-    for (i, doc) in docs.into_iter().enumerate() {
-        if i % 100 == 0 {
-             // println!("Processed {} docs", i);
+    let mut count = 0;
+    let mut error_count = 0;
+    
+    for doc_result in stream {
+        match doc_result {
+            Ok(doc) => {
+                 if let Err(e) = state.rag.add_document(&doc.content, doc.metadata).await {
+                     eprintln!("Failed to add document: {}", e);
+                     error_count += 1;
+                 } else {
+                     count += 1;
+                     if count % 100 == 0 {
+                         println!("Processed {} documents...", count);
+                     }
+                 }
+            },
+            Err(e) => {
+                eprintln!("Failed to parse document at index {}: {}", count + error_count, e);
+                error_count += 1;
+                break;
+            }
         }
-        let _ = state.rag.add_document(&doc.content, doc.metadata).await;
     }
     
+    println!("Finished processing {}. Imported: {}, Errors: {}", file_path, count, error_count);
     Ok(())
 }
 
