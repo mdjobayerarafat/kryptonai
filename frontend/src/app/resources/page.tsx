@@ -6,35 +6,47 @@ import { FileText, ArrowUpRight, Shield, Database } from "lucide-react";
 export default function ResourcesPage() {
   const resources = [
     {
-      category: "Project Documents",
+      category: "How KryptonSecAI Works",
       icon: <FileText size={24} className="text-green-500" />,
-      items: [
-        { title: "System Architecture Overview", link: "#" },
-        { title: "RAG Pipeline & Knowledge Base", link: "#" },
-        { title: "Model Catalog & Selection Flow", link: "#" },
-        { title: "Voucher Access & Subscription Logic", link: "#" },
-        { title: "Admin Roles & Permissions", link: "#" },
-        { title: "Docker Deployment Guide", link: "#" },
+      description: "Private platform overview for end users. No installation or deployment details are shared.",
+      bullets: [
+        "KryptonSecAI combines a curated knowledge base with live model reasoning.",
+        "Your chat is enriched with relevant context before the model responds.",
+        "Access is managed by account verification and subscription status.",
+        "Admin and editor roles manage models and knowledge curation.",
       ],
     },
     {
-      category: "API & Data",
+      category: "Chatting with Krypton AI",
       icon: <Database size={24} className="text-blue-500" />,
-      items: [
-        { title: "Chat API Endpoints", link: "#" },
-        { title: "Document Upload Format", link: "#" },
-        { title: "Model Management Endpoints", link: "#" },
-        { title: "Voucher Create & Redeem", link: "#" },
+      description: "Best practices for getting fast, reliable answers in the chat.",
+      bullets: [
+        "Choose a model from the selector before starting a session.",
+        "State the goal, constraints, and expected output format upfront.",
+        "Provide relevant inputs like logs, payloads, or code snippets.",
+        "Use follow-up questions to refine depth or scope.",
       ],
     },
     {
-      category: "Security Playbooks",
+      category: "Models & When to Use",
       icon: <Shield size={24} className="text-purple-500" />,
-      items: [
-        { title: "CTF Guidance Standards", link: "#" },
-        { title: "Ethical Guardrails & Refusal Policy", link: "#" },
-        { title: "Incident Response Workflow", link: "#" },
-        { title: "Knowledge Base Curation", link: "#" },
+      description: "Use these exact model names when selecting in chat.",
+      bullets: [
+        "Krypton (deepseek/deepseek-r1-0528:free) for deep reasoning and step-by-step analysis.",
+        "KrytonX (nvidia/nemotron-3-nano-30b-a3b:free) for fast summaries and structured answers.",
+        "KryptonY (arcee-ai/trinity-mini:free) for quick brainstorming and idea exploration.",
+        "Krypton-OSS (z-ai/glm-4.5-air:free) for concise responses and lightweight tasks.",
+      ],
+    },
+    {
+      category: "Prompting for Best Output",
+      icon: <Shield size={24} className="text-green-500" />,
+      description: "Clear prompts lead to higher quality responses and faster iteration.",
+      bullets: [
+        "Use a role and objective: “Act as a pentester, assess this endpoint.”",
+        "Specify the depth: “Give a high-level summary” or “Provide detailed steps.”",
+        "Ask for formats: “Return a checklist” or “Provide a JSON schema.”",
+        "Share constraints: time limits, tooling, or environment restrictions.",
       ],
     },
   ];
@@ -49,11 +61,11 @@ export default function ResourcesPage() {
             KryptonSecAI <span className="text-green-500">Resources</span>
           </h1>
           <p className="text-xl text-gray-400">
-            Project documents, API references, and operational playbooks tailored to the platform.
+            Private user documentation for how to chat with KryptonSecAI effectively.
           </p>
         </div>
 
-        <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8 mb-16">
+        <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
           {resources.map((section, idx) => (
             <div key={idx} className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 hover:border-white/20 transition-colors">
               <div className="flex items-center gap-4 mb-8">
@@ -62,13 +74,14 @@ export default function ResourcesPage() {
                 </div>
                 <h3 className="text-2xl font-bold text-white">{section.category}</h3>
               </div>
+              <p className="text-gray-500 mb-6">{section.description}</p>
               <ul className="space-y-4">
-                {section.items.map((item, i) => (
+                {section.bullets.map((item, i) => (
                   <li key={i}>
-                    <a href={item.link} className="flex items-center justify-between group text-gray-400 hover:text-white transition-colors">
-                      <span>{item.title}</span>
-                      <ArrowUpRight size={16} className="opacity-0 group-hover:opacity-100 transition-opacity text-green-500" />
-                    </a>
+                    <div className="flex items-start justify-between gap-3 text-gray-400">
+                      <span>{item}</span>
+                      <ArrowUpRight size={16} className="text-green-500 mt-1 shrink-0" />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -79,9 +92,9 @@ export default function ResourcesPage() {
         <div className="max-w-7xl mx-auto bg-[#0a0a0a] border border-white/10 rounded-2xl p-10">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
             <div>
-              <h2 className="text-3xl font-bold text-white mb-3">Need a custom document?</h2>
+              <h2 className="text-3xl font-bold text-white mb-3">Need tailored guidance?</h2>
               <p className="text-gray-400 text-lg">
-                Share your requirements and we can prepare a dedicated guide for your team’s workflow.
+                Ask in chat for the best workflow and prompt style for your use case.
               </p>
             </div>
             <div className="flex flex-wrap gap-4">
