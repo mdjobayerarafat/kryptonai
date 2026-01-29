@@ -18,6 +18,17 @@ export default function AdminPage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [documents, setDocuments] = useState<any[]>([]);
   const [editingDocument, setEditingDocument] = useState<any>(null);
+  const [docPage, setDocPage] = useState(1);
+  const [docLimit, setDocLimit] = useState(20);
+  const [docTotal, setDocTotal] = useState(0);
+  const [importStatus, setImportStatus] = useState<{
+      total_documents: number;
+      processed_documents: number;
+      errors: number;
+      is_processing: boolean;
+      current_file: string;
+      message: string;
+  } | null>(null);
 
   // User Management State
   const [users, setUsers] = useState<any[]>([]);
@@ -78,13 +89,38 @@ export default function AdminPage() {
     }
   }, [router, activeTab]);
 
-  const fetchDocuments = async () => {
+  useEffect(() => {
+      let interval: NodeJS.Timeout;
+      if (kbLoading || importStatus?.is_processing) {
+          interval = setInterval(async () => {
+              const token = localStorage.getItem("token");
+              try {
+                  const res = await axios.get(`${getApiBaseUrl()}/api/admin/import-status`, {
+                      headers: { Authorization: `Bearer ${token}` }
+                  });
+                  setImportStatus(res.data);
+                  if (!res.data.is_processing && res.data.message.includes("Import complete")) {
+                      setKbLoading(false);
+                      setKbStatus({ type: "success", message: res.data.message });
+                      fetchDocuments();
+                  }
+              } catch (e) {
+                  console.error("Poll error", e);
+              }
+          }, 1000);
+      }
+      return () => clearInterval(interval);
+  }, [kbLoading, importStatus?.is_processing]);
+
+  const fetchDocuments = async (page = docPage, limit = docLimit) => {
       const token = localStorage.getItem("token");
       try {
-          const res = await axios.get(`${getApiBaseUrl()}/api/admin/documents`, {
+          const res = await axios.get(`${getApiBaseUrl()}/api/admin/documents?page=${page}&limit=${limit}`, {
               headers: { Authorization: `Bearer ${token}` }
           });
-          setDocuments(res.data);
+          setDocuments(res.data.documents);
+          setDocTotal(res.data.total);
+          setDocPage(page); // Update current page if successful
       } catch (err) {
           console.error("Failed to fetch documents", err);
       }
@@ -347,17 +383,17 @@ export default function AdminPage() {
             }
         });
         
-        setKbStatus({ type: "success", message: response.data.message || "Upload successful!" });
+        setKbStatus({ type: "success", message: response.data.message });
         setJsonInput("");
         setSelectedFile(null);
-        setUploadProgress(0);
-        fetchDocuments();
+        // Don't clear progress yet, let polling take over UI
+        // setUploadProgress(0); 
+        // fetchDocuments(); // Polling will fetch when done
     } catch (error: any) {
         console.error("Upload error:", error);
         setKbStatus({ type: "error", message: error.response?.data?.error || "Failed to upload data." });
-    } finally {
-        setKbLoading(false);
-    }
+        setKbLoading(false); // Only stop loading on error
+    } 
   };
 
   return (
@@ -473,16 +509,21 @@ export default function AdminPage() {
                         </div>
                     )}
                     
-                    {kbLoading && uploadProgress > 0 && (
+                    {kbLoading && (
                         <div className="mb-6">
                             <div className="flex justify-between text-xs text-gray-400 mb-1">
-                                <span>Uploading...</span>
-                                <span>{uploadProgress}%</span>
+                                <span>{importStatus?.is_processing ? importStatus.message : "Uploading..."}</span>
+                                <span>
+                                    {importStatus?.is_processing 
+                                        ? `${importStatus.processed_documents} processed${importStatus.errors > 0 ? ` (${importStatus.errors} errors)` : ''}` 
+                                        : `${uploadProgress}%`
+                                    }
+                                </span>
                             </div>
                             <div className="w-full bg-white/10 rounded-full h-2">
                                 <div 
                                     className="bg-green-500 h-2 rounded-full transition-all duration-300 ease-out relative overflow-hidden" 
-                                    style={{ width: `${uploadProgress}%` }}
+                                    style={{ width: importStatus?.is_processing ? '100%' : `${uploadProgress}%` }}
                                 >
                                     <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
                                 </div>
@@ -502,7 +543,26 @@ export default function AdminPage() {
                 </div>
 
                 <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 shadow-2xl">
-                    <h2 className="text-2xl font-bold text-white mb-6">Existing Knowledge</h2>
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-2xl font-bold text-white">Existing Knowledge ({docTotal})</h2>
+                        <div className="flex gap-2 items-center">
+                             <button 
+                                 onClick={() => fetchDocuments(docPage - 1)}
+                                 disabled={docPage <= 1}
+                                 className="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-sm disabled:opacity-50 transition-colors"
+                             >
+                                 Prev
+                             </button>
+                             <span className="px-2 text-sm text-gray-400">Page {docPage}</span>
+                             <button 
+                                 onClick={() => fetchDocuments(docPage + 1)}
+                                 disabled={docPage * docLimit >= docTotal}
+                                 className="px-3 py-1 bg-white/5 hover:bg-white/10 rounded-lg text-sm disabled:opacity-50 transition-colors"
+                             >
+                                 Next
+                             </button>
+                        </div>
+                    </div>
                     <div className="space-y-4">
                         {documents.map((doc) => (
                             <div key={doc.id} className="bg-white/5 rounded-xl p-4 border border-white/10">

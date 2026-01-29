@@ -71,14 +71,23 @@ impl RagSystem {
         Ok(chunks)
     }
 
-    pub async fn list_documents(&self) -> Result<Vec<crate::models::DocumentSummary>, Box<dyn std::error::Error>> {
+    pub async fn list_documents(&self, limit: i64, offset: i64) -> Result<Vec<crate::models::DocumentSummary>, Box<dyn std::error::Error>> {
         let rows = sqlx::query_as::<_, crate::models::DocumentSummary>(
-            "SELECT id, content, metadata FROM documents ORDER BY id DESC LIMIT 100"
+            "SELECT id, content, metadata FROM documents ORDER BY id DESC LIMIT $1 OFFSET $2"
         )
+        .bind(limit)
+        .bind(offset)
         .fetch_all(&self.pool)
         .await?;
 
         Ok(rows)
+    }
+
+    pub async fn count_documents(&self) -> Result<i64, Box<dyn std::error::Error>> {
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM documents")
+            .fetch_one(&self.pool)
+            .await?;
+        Ok(count.0)
     }
 
     pub async fn update_document(&self, id: &str, content: &str, metadata: Option<serde_json::Value>) -> Result<(), Box<dyn std::error::Error>> {

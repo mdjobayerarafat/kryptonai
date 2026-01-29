@@ -1,7 +1,7 @@
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 mod db;
 mod auth;
@@ -236,9 +236,11 @@ async fn main() -> std::io::Result<()> {
     println!("Demo Chat History Seeded.");
 
     let client = reqwest::Client::new();
+    let import_status = Arc::new(Mutex::new(models::ImportStatus::default()));
     let app_state = web::Data::new(AppState {
         rag,
         client,
+        import_status,
     });
 
     println!("Starting server at http://0.0.0.0:8080");
@@ -284,6 +286,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::delete_model)
             // Knowledge Base
             .service(routes::upload_file)
+            .service(routes::get_import_status)
     })
     .bind(("0.0.0.0", 8080))?
     .run()

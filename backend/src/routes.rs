@@ -6,12 +6,12 @@ use serde_json::json;
 use crate::models::{
     ChatRequest, CreateDocumentRequest, ChatResponse, RegisterRequest, LoginRequest, AuthResponse, User,
     VoucherGenerateRequest, VoucherRedeemRequest, Voucher, AIModel, CreateAIModelRequest, UpdateAIModelRequest,
-    ChatSession, ChatMessage, VerifyEmailRequest, VoucherRequest
+    ChatSession, ChatMessage, VerifyEmailRequest, VoucherRequest, ImportStatus
 };
 use crate::rag::RagSystem;
 use crate::auth::{self, AuthenticatedUser};
 use crate::db::DbPool;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use chrono::{Utc, Duration};
 use uuid::Uuid;
 use sqlx::Row;
@@ -23,6 +23,7 @@ use std::env;
 pub struct AppState {
     pub rag: Arc<RagSystem>,
     pub client: reqwest::Client,
+    pub import_status: Arc<Mutex<ImportStatus>>,
 }
 
 async fn require_verified(user: &AuthenticatedUser, pool: &DbPool) -> Result<User, HttpResponse> {
@@ -592,10 +593,17 @@ async fn upload_data(
     HttpResponse::Ok().json(json!({"message": format!("Indexed {} documents", count)}))
 }
 
+#[derive(serde::Deserialize)]
+pub struct ListDocsQuery {
+    pub page: Option<i64>,
+    pub limit: Option<i64>,
+}
+
 #[get("/api/admin/documents")]
 pub async fn list_documents(
     user: AuthenticatedUser,
     state: web::Data<AppState>,
+    query: web::Query<ListDocsQuery>,
 ) -> impl Responder {
     if let Err(resp) = require_verified(&user, &state.rag.pool).await {
         return resp;
@@ -604,10 +612,34 @@ pub async fn list_documents(
         return HttpResponse::Forbidden().json(json!({"error": "Admin or Editor access required"}));
     }
 
-    match state.rag.list_documents().await {
-        Ok(docs) => HttpResponse::Ok().json(docs),
+    let page = query.page.unwrap_or(1);
+    let limit = query.limit.unwrap_or(100);
+    let offset = (page - 1) * limit;
+
+    match state.rag.list_documents(limit, offset).await {
+        Ok(docs) => {
+            let total = state.rag.count_documents().await.unwrap_or(0);
+            HttpResponse::Ok().json(json!({
+                "documents": docs,
+                "total": total,
+                "page": page,
+                "limit": limit
+            }))
+        },
         Err(e) => HttpResponse::InternalServerError().json(json!({"error": e.to_string()})),
     }
+}
+
+#[get("/api/admin/import-status")]
+pub async fn get_import_status(
+    user: AuthenticatedUser,
+    state: web::Data<AppState>,
+) -> impl Responder {
+    if user.role != "admin" && user.role != "editor" {
+        return HttpResponse::Forbidden().json(json!({"error": "Admin/Editor access required"}));
+    }
+    let status = state.import_status.lock().unwrap();
+    HttpResponse::Ok().json(&*status)
 }
 
 #[put("/api/admin/documents/{id}")]
@@ -1151,7 +1183,24 @@ async fn process_knowledge_file(state: web::Data<AppState>, file_path: String) -
     let file = std::fs::File::open(&file_path)?;
     let reader = std::io::BufReader::new(file);
     
-    // Use stream deserializer to handle large files and reduce memory usage
+    // Count total items first (inefficient for huge files but needed for progress bar)
+    // Or just stream and update processed count without total (indeterminate progress bar if total unknown)
+    // Let's try to read once to count, then reset? No, stream deserializer is better.
+    // Ideally user sends total count or we just show "Processed X documents" without %.
+    // But for JSON array, we can't easily know total without parsing.
+    // Let's just track processed count.
+    
+    // Reset status
+    {
+        let mut status = state.import_status.lock().unwrap();
+        status.is_processing = true;
+        status.processed_documents = 0;
+        status.total_documents = 0; // Unknown initially
+        status.errors = 0;
+        status.current_file = file_path.clone();
+        status.message = "Starting import...".to_string();
+    }
+
     let stream = serde_json::Deserializer::from_reader(reader).into_iter::<CreateDocumentRequest>();
     
     println!("Starting import of documents from {}", file_path);
@@ -1167,20 +1216,34 @@ async fn process_knowledge_file(state: web::Data<AppState>, file_path: String) -
                      error_count += 1;
                  } else {
                      count += 1;
-                     if count % 100 == 0 {
-                         println!("Processed {} documents...", count);
+                     if count % 10 == 0 {
+                         let mut status = state.import_status.lock().unwrap();
+                         status.processed_documents = count;
+                         status.errors = error_count;
+                         status.message = format!("Processed {} documents...", count);
                      }
                  }
             },
             Err(e) => {
                 eprintln!("Failed to parse document at index {}: {}", count + error_count, e);
                 error_count += 1;
+                // Don't break on single error, try next? JSON array parser might fail completely if structure invalid.
+                // serde_json stream iterator usually stops on error.
                 break;
             }
         }
     }
     
     println!("Finished processing {}. Imported: {}, Errors: {}", file_path, count, error_count);
+    
+    {
+        let mut status = state.import_status.lock().unwrap();
+        status.is_processing = false;
+        status.processed_documents = count;
+        status.errors = error_count;
+        status.message = format!("Import complete. Imported: {}, Errors: {}", count, error_count);
+    }
+    
     Ok(())
 }
 

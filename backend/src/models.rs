@@ -10,6 +10,29 @@ pub struct Document {
     pub embedding: Vector,
 }
 
+#[derive(Debug, serde::Serialize, Clone)]
+pub struct ImportStatus {
+    pub total_documents: usize,
+    pub processed_documents: usize,
+    pub errors: usize,
+    pub is_processing: bool,
+    pub current_file: String,
+    pub message: String,
+}
+
+impl Default for ImportStatus {
+    fn default() -> Self {
+        Self {
+            total_documents: 0,
+            processed_documents: 0,
+            errors: 0,
+            is_processing: false,
+            current_file: String::new(),
+            message: String::new(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug, sqlx::FromRow)]
 pub struct DocumentSummary {
     pub id: String,
