@@ -1,115 +1,377 @@
 "use client";
+import { useState, useEffect } from "react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { FileText, ArrowUpRight, Shield, Database } from "lucide-react";
+import { ChevronDown, ChevronRight, FileText, Book, Settings, Code, Database, Shield, Users, Zap } from "lucide-react";
 
-export default function ResourcesPage() {
-  const resources = [
-    {
-      category: "How KryptonSecAI Works",
-      icon: <FileText size={24} className="text-green-500" />,
-      description: "Private platform overview for end users. No installation or deployment details are shared.",
-      bullets: [
-        "KryptonSecAI combines a curated knowledge base with live model reasoning.",
-        "Your chat is enriched with relevant context before the model responds.",
-        "Access is managed by account verification and subscription status.",
-        "Admin and editor roles manage models and knowledge curation.",
-      ],
-    },
-    {
-      category: "Chatting with Krypton AI",
-      icon: <Database size={24} className="text-blue-500" />,
-      description: "Best practices for getting fast, reliable answers in the chat.",
-      bullets: [
-        "Choose a model from the selector before starting a session.",
-        "State the goal, constraints, and expected output format upfront.",
-        "Provide relevant inputs like logs, payloads, or code snippets.",
-        "Use follow-up questions to refine depth or scope.",
-      ],
-    },
-    {
-      category: "Models & When to Use",
-      icon: <Shield size={24} className="text-purple-500" />,
-      description: "Use these exact model names when selecting in chat.",
-      bullets: [
-        "Krypton (deepseek/deepseek-r1-0528:free) for deep reasoning and step-by-step analysis.",
-        "KrytonX (nvidia/nemotron-3-nano-30b-a3b:free) for fast summaries and structured answers.",
-        "KryptonY (arcee-ai/trinity-mini:free) for quick brainstorming and idea exploration.",
-        "Krypton-OSS (z-ai/glm-4.5-air:free) for concise responses and lightweight tasks.",
-      ],
-    },
-    {
-      category: "Prompting for Best Output",
-      icon: <Shield size={24} className="text-green-500" />,
-      description: "Clear prompts lead to higher quality responses and faster iteration.",
-      bullets: [
-        "Use a role and objective: “Act as a pentester, assess this endpoint.”",
-        "Specify the depth: “Give a high-level summary” or “Provide detailed steps.”",
-        "Ask for formats: “Return a checklist” or “Provide a JSON schema.”",
-        "Share constraints: time limits, tooling, or environment restrictions.",
-      ],
-    },
-  ];
+// Sidebar Navigation Data
+const navigationSections = [
+  {
+    title: "Getting Started",
+    icon: <Book size={16} />,
+    items: [
+      { title: "What is KryptonSecAI?", href: "#what-is-kryptonsecai", active: true },
+      { title: "Quick Start Guide", href: "#quick-start" },
+      { title: "Installation", href: "#installation" },
+    ]
+  },
+  {
+    title: "Project Structure",
+    icon: <FileText size={16} />,
+    items: [
+      { title: "System Architecture", href: "#system-architecture" },
+      { title: "RAG Pipeline", href: "#rag-pipeline" },
+      { title: "Model Catalog", href: "#model-catalog" },
+    ]
+  },
+  {
+    title: "Configuration",
+    icon: <Settings size={16} />,
+    items: [
+      { title: "Environment Setup", href: "#environment-setup" },
+      { title: "Docker Deployment", href: "#docker-deployment" },
+      { title: "Database Configuration", href: "#database-config" },
+    ]
+  },
+  {
+    title: "API Reference",
+    icon: <Code size={16} />,
+    items: [
+      { title: "Authentication", href: "#authentication" },
+      { title: "Chat Endpoints", href: "#chat-endpoints" },
+      { title: "Document Management", href: "#document-management" },
+    ]
+  },
+  {
+    title: "User Management",
+    icon: <Users size={16} />,
+    items: [
+      { title: "Admin Roles", href: "#admin-roles" },
+      { title: "Voucher System", href: "#voucher-system" },
+      { title: "Access Control", href: "#access-control" },
+    ]
+  }
+];
+
+// Table of Contents Data
+const tableOfContents = [
+  { title: "Overview", href: "#overview" },
+  { title: "Key Features", href: "#key-features" },
+  { title: "Architecture", href: "#architecture" },
+  { title: "Getting Started", href: "#getting-started" },
+  { title: "Configuration", href: "#configuration" },
+  { title: "Deployment", href: "#deployment" },
+];
+
+// Sidebar Component
+const Sidebar = () => {
+  const [expandedSections, setExpandedSections] = useState<string[]>(["Getting Started"]);
+
+  const toggleSection = (sectionTitle: string) => {
+    setExpandedSections(prev => 
+      prev.includes(sectionTitle) 
+        ? prev.filter(title => title !== sectionTitle)
+        : [...prev, sectionTitle]
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-black text-gray-300 font-sans selection:bg-green-500/30 selection:text-green-200 flex flex-col">
-      <Navbar />
-
-      <main className="flex-1 pt-24 pb-16 px-4">
-        <div className="text-center max-w-4xl mx-auto mb-16">
-          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 tracking-tight">
-            KryptonSecAI <span className="text-green-500">Resources</span>
-          </h1>
-          <p className="text-xl text-gray-400">
-            Private user documentation for how to chat with KryptonSecAI effectively.
-          </p>
-        </div>
-
-        <div className="max-w-7xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-          {resources.map((section, idx) => (
-            <div key={idx} className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 hover:border-white/20 transition-colors">
-              <div className="flex items-center gap-4 mb-8">
-                <div className="p-3 bg-white/5 rounded-lg">
+    <div className="w-64 bg-[#0a0a0a] border-r border-gray-800 h-screen sticky top-0 overflow-y-auto">
+      <div className="p-6">
+        <h2 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+          <FileText size={20} className="text-green-500" />
+          Documentation
+        </h2>
+        
+        <nav className="space-y-2">
+          {navigationSections.map((section) => (
+            <div key={section.title}>
+              <button
+                onClick={() => toggleSection(section.title)}
+                className="w-full flex items-center justify-between p-2 text-gray-400 hover:text-white hover:bg-gray-800/50 rounded-lg transition-colors"
+              >
+                <div className="flex items-center gap-2">
                   {section.icon}
+                  <span className="text-sm font-medium">{section.title}</span>
                 </div>
-                <h3 className="text-2xl font-bold text-white">{section.category}</h3>
-              </div>
-              <p className="text-gray-500 mb-6">{section.description}</p>
-              <ul className="space-y-4">
-                {section.bullets.map((item, i) => (
-                  <li key={i}>
-                    <div className="flex items-start justify-between gap-3 text-gray-400">
-                      <span>{item}</span>
-                      <ArrowUpRight size={16} className="text-green-500 mt-1 shrink-0" />
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                {expandedSections.includes(section.title) ? 
+                  <ChevronDown size={16} /> : 
+                  <ChevronRight size={16} />
+                }
+              </button>
+              
+              {expandedSections.includes(section.title) && (
+                <div className="ml-6 mt-1 space-y-1">
+                  {section.items.map((item) => (
+                    <a
+                      key={item.title}
+                      href={item.href}
+                      className={`block p-2 text-sm rounded-lg transition-colors ${
+                        item.active 
+                          ? 'text-green-400 bg-green-500/10 border-l-2 border-green-500' 
+                          : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/30'
+                      }`}
+                    >
+                      {item.title}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
-        </div>
+        </nav>
+      </div>
+    </div>
+  );
+};
 
-        <div className="max-w-7xl mx-auto bg-[#0a0a0a] border border-white/10 rounded-2xl p-10">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
-            <div>
-              <h2 className="text-3xl font-bold text-white mb-3">Need tailored guidance?</h2>
-              <p className="text-gray-400 text-lg">
-                Ask in chat for the best workflow and prompt style for your use case.
+// Table of Contents Component
+const TableOfContents = () => {
+  const [activeSection, setActiveSection] = useState("#overview");
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = tableOfContents.map(item => item.href.substring(1));
+      const currentSection = sections.find(section => {
+        const element = document.getElementById(section);
+        if (element) {
+          const rect = element.getBoundingClientRect();
+          return rect.top <= 100 && rect.bottom >= 100;
+        }
+        return false;
+      });
+      
+      if (currentSection) {
+        setActiveSection(`#${currentSection}`);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  return (
+    <div className="w-64 bg-[#0a0a0a] border-l border-gray-800 h-screen sticky top-0 overflow-y-auto">
+      <div className="p-6">
+        <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">
+          On This Page
+        </h3>
+        <nav className="space-y-2">
+          {tableOfContents.map((item) => (
+            <a
+              key={item.href}
+              href={item.href}
+              className={`block text-sm py-1 transition-colors ${
+                activeSection === item.href
+                  ? 'text-green-400 font-medium'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              {item.title}
+            </a>
+          ))}
+        </nav>
+      </div>
+    </div>
+  );
+};
+
+// Code Block Component
+const CodeBlock = ({ children, language = "bash" }: { children: string, language?: string }) => {
+  return (
+    <div className="bg-[#111] border border-gray-800 rounded-lg p-4 my-6">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-gray-500 uppercase tracking-wider">{language}</span>
+      </div>
+      <pre className="text-sm text-gray-300 overflow-x-auto">
+        <code>{children}</code>
+      </pre>
+    </div>
+  );
+};
+
+export default function ResourcesPage() {
+  return (
+    <div className="min-h-screen bg-black text-gray-300 font-sans selection:bg-green-500/30 selection:text-green-200">
+      <Navbar />
+      
+      <div className="flex pt-16">
+        {/* Left Sidebar */}
+        <Sidebar />
+        
+        {/* Main Content */}
+        <main className="flex-1 max-w-4xl mx-auto px-8 py-12">
+          <div className="prose prose-invert max-w-none">
+            {/* Page Header */}
+            <div className="mb-12">
+              <h1 id="overview" className="text-5xl font-bold text-white mb-4 tracking-tight">
+                What is KryptonSecAI?
+              </h1>
+              <p className="text-xl text-gray-400 leading-relaxed">
+                A comprehensive AI-powered cybersecurity platform designed for security teams, 
+                researchers, and educational institutions.
               </p>
             </div>
-            <div className="flex flex-wrap gap-4">
-              <a href="/register" className="px-6 py-3 bg-green-600 hover:bg-green-500 text-black font-bold rounded-lg transition-colors">
-                Request Access
-              </a>
-              <a href="/chat" className="px-6 py-3 bg-white/5 hover:bg-white/10 text-white font-bold rounded-lg transition-colors">
-                Ask Krypton AI
-              </a>
+
+            {/* Key Features Section */}
+            <section id="key-features" className="mb-16">
+              <h2 className="text-3xl font-bold text-white mb-6 flex items-center gap-3">
+                <Zap className="text-green-500" size={28} />
+                Key Features
+              </h2>
+              
+              <div className="grid md:grid-cols-2 gap-6 mb-8">
+                <div className="bg-[#0a0a0a] border border-gray-800 rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Shield className="text-green-500" size={20} />
+                    <h3 className="text-lg font-semibold text-white">Knowledge-Driven Answers</h3>
+                  </div>
+                  <p className="text-gray-400 text-sm">
+                    RAG-powered responses grounded in your internal documents and curated security context.
+                  </p>
+                </div>
+                
+                <div className="bg-[#0a0a0a] border border-gray-800 rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Database className="text-blue-500" size={20} />
+                    <h3 className="text-lg font-semibold text-white">Model Control</h3>
+                  </div>
+                  <p className="text-gray-400 text-sm">
+                    Choose from OpenRouter models, activate what you need, and keep outputs consistent.
+                  </p>
+                </div>
+              </div>
+            </section>
+
+            {/* Architecture Section */}
+            <section id="architecture" className="mb-16">
+              <h2 className="text-3xl font-bold text-white mb-6">System Architecture</h2>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                KryptonSecAI follows a modern microservices architecture with the following components:
+              </p>
+              
+              <ul className="space-y-3 mb-8 text-gray-300">
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <span><strong className="text-white">Frontend:</strong> Next.js application with Tailwind CSS</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <span><strong className="text-white">Backend:</strong> Rust-based API server with Axum framework</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <span><strong className="text-white">Database:</strong> PostgreSQL with pgvector for embeddings</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2 flex-shrink-0"></div>
+                  <span><strong className="text-white">AI Models:</strong> Integration with OpenRouter API</span>
+                </li>
+              </ul>
+            </section>
+
+            {/* Getting Started Section */}
+            <section id="getting-started" className="mb-16">
+              <h2 className="text-3xl font-bold text-white mb-6">Getting Started</h2>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                Follow these steps to set up KryptonSecAI in your local development environment.
+              </p>
+
+              <h3 className="text-xl font-semibold text-white mb-4">Prerequisites</h3>
+              <ul className="space-y-2 mb-6 text-gray-300">
+                <li>• Docker and Docker Compose</li>
+                <li>• Node.js 18+ and npm</li>
+                <li>• Rust 1.70+ (for backend development)</li>
+              </ul>
+
+              <h3 className="text-xl font-semibold text-white mb-4">Installation</h3>
+              <CodeBlock language="bash">
+{`# Clone the repository
+git clone https://github.com/your-org/kryptonsecai.git
+cd kryptonsecai
+
+# Start the services
+docker-compose up -d
+
+# Install frontend dependencies
+cd frontend
+npm install
+npm run dev`}
+              </CodeBlock>
+            </section>
+
+            {/* Configuration Section */}
+            <section id="configuration" className="mb-16">
+              <h2 className="text-3xl font-bold text-white mb-6">Configuration</h2>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                Configure your environment variables and settings for optimal performance.
+              </p>
+
+              <h3 className="text-xl font-semibold text-white mb-4">Environment Variables</h3>
+              <CodeBlock language="env">
+{`# Backend Configuration
+DATABASE_URL=postgres://krypton:password@localhost:5432/krypton_db
+OPENROUTER_API_KEY=your_openrouter_api_key
+RUST_LOG=info
+PORT=8080
+
+# Frontend Configuration
+NEXT_PUBLIC_API_URL=http://localhost:8080`}
+              </CodeBlock>
+            </section>
+
+            {/* Deployment Section */}
+            <section id="deployment" className="mb-16">
+              <h2 className="text-3xl font-bold text-white mb-6">Deployment</h2>
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                Deploy KryptonSecAI to production using Docker containers.
+              </p>
+
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-6 mb-6">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <span className="text-xs text-white font-bold">i</span>
+                  </div>
+                  <div>
+                    <h4 className="text-blue-400 font-semibold mb-2">Production Deployment</h4>
+                    <p className="text-gray-300 text-sm">
+                      Make sure to update your environment variables and secure your database 
+                      before deploying to production.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <CodeBlock language="bash">
+{`# Build and deploy with Docker
+docker-compose -f docker-compose.prod.yml up -d
+
+# Check service status
+docker-compose ps`}
+              </CodeBlock>
+            </section>
+
+            <hr className="border-gray-800 my-12" />
+
+            {/* Footer Navigation */}
+            <div className="flex justify-between items-center pt-8">
+              <div>
+                <p className="text-sm text-gray-500">
+                  Last updated: January 2025
+                </p>
+              </div>
+              <div className="flex gap-4">
+                <a href="#" className="text-sm text-green-400 hover:text-green-300 transition-colors">
+                  Edit this page →
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
+        </main>
 
-      <Footer />
+        {/* Right Sidebar - Table of Contents */}
+        <TableOfContents />
+      </div>
     </div>
   );
 }
