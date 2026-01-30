@@ -50,7 +50,7 @@
 
 ### 1. Modern Landing Page
 _Experience a sleek, developer-centric interface designed for cybersecurity professionals._
-<img src="frontend/public/hero-app.png" alt="Landing Page" width="100%" />
+<img src="frontend/public/landing-page.png" alt="Landing Page" width="100%" />
 
 ### 2. Intelligent Chat Assistant
 _Interact with Krypton to analyze threats, debug code, and get real-time security insights._
