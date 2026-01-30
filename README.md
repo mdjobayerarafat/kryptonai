@@ -1,91 +1,143 @@
 <div align="center">
-  <img src="frontend/public/hero-app.png" alt="KryptonSecAI" width="720" />
+  <img src="frontend/src/app/favicon.ico" alt="KryptonSecAI Logo" width="80" height="80" />
+  <h1>KryptonSecAI</h1>
+  <p>
+    <strong>Next-Gen AI Security Operations Platform</strong>
+  </p>
+  <p>
+    Intelligent RAG Pipeline • Multi-Model Orchestration • Enterprise-Grade Security
+  </p>
 
-  # KryptonSecAI
+  <p>
+    <a href="https://kryptonsecai.nextsoft.live"><strong>View Live Demo »</strong></a>
+    <br />
+    <br />
+    <a href="#features">Features</a>
+    ·
+    <a href="#visual-tour">Visual Tour</a>
+    ·
+    <a href="#getting-started">Getting Started</a>
+    ·
+    <a href="#deployment">Deployment</a>
+  </p>
 
-  Cybersecurity-focused AI platform with Retrieval-Augmented Generation, voucher-based access, and multi-model control.  
-  A subproduct of KryptonX.
-
-  <br />
-
-  <img src="https://img.shields.io/badge/Rust-1B1B1B?style=for-the-badge&logo=rust&logoColor=white" />
-  <img src="https://img.shields.io/badge/Actix--Web-000000?style=for-the-badge&logo=actix&logoColor=white" />
-  <img src="https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white" />
-  <img src="https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB" />
-  <img src="https://img.shields.io/badge/PostgreSQL-316192?style=for-the-badge&logo=postgresql&logoColor=white" />
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/badge/Rust-1.75+-000000?style=for-the-badge&logo=rust&logoColor=white" />
+  <img src="https://img.shields.io/badge/Next.js-15.1-000000?style=for-the-badge&logo=next.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-316192?style=for-the-badge&logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
 </div>
 
-## Overview
-KryptonSecAI is built for security teams, researchers, and educators who need grounded answers, controlled access, and flexible model choice. It pairs a pgvector-backed RAG pipeline with a unified system prompt across user-selected models, then gates access using voucher-based subscriptions and role-based permissions.
+<br />
 
-## Features
-- RAG pipeline with pgvector-backed search for grounded answers
-- Multi-model chat with a unified system prompt and user-selected models
-- Voucher-only access control with admin management
-- Role-based authentication (admin/editor/user)
-- Next.js 16 frontend and Rust Actix-Web backend
+## 🚀 Overview
 
-## Stack
-- Frontend: Next.js (App Router), React 19, Tailwind CSS
-- Backend: Rust, Actix-Web, SQLx
-- Database: PostgreSQL + pgvector
-- Embeddings: fastembed + ONNX Runtime
+**KryptonSecAI** is a cutting-edge security platform designed for SOC teams, researchers, and enterprises. It leverages **Retrieval-Augmented Generation (RAG)** to provide grounded, context-aware answers from your private knowledge base. With support for multiple LLMs, role-based access control, and a high-performance Rust backend, it delivers speed, security, and scalability.
 
-## Quick Start (Docker)
-```bash
-docker-compose up --build
-```
+## ✨ Key Features
 
-Windows PowerShell:
-```powershell
-.\start-docker.ps1
-```
+- **🧠 Advanced RAG Engine**: Powered by `pgvector` and `fastembed` (ONNX Runtime) for precise semantic search and grounded responses.
+- **🤖 Multi-Model Support**: Seamlessly switch between models (e.g., Llama 3, Mistral) with a unified system prompt.
+- **🔐 Enterprise Security**:
+  - **Voucher System**: Invite-only access control.
+  - **RBAC**: Granular permissions (Admin, Editor, User).
+  - **Email Verification**: Secure onboarding flow.
+- **⚡ High Performance**:
+  - **Rust Backend**: Built with Actix-Web for near-zero latency.
+  - **Optimized Frontend**: Next.js App Router with Tailwind CSS.
+- **📊 Admin Dashboard**: Manage users, vouchers, and knowledge base uploads.
 
-Linux/macOS:
-```bash
-./start-docker.sh
-```
+## 📸 Visual Tour
 
-Services:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:8080
-- Postgres: localhost:5432
+### 1. Modern Landing Page
+_Experience a sleek, developer-centric interface designed for cybersecurity professionals._
+<img src="frontend/public/hero-app.png" alt="Landing Page" width="100%" />
 
-## Local Development
-Backend:
+### 2. Intelligent Chat Assistant
+_Interact with Krypton to analyze threats, debug code, and get real-time security insights._
+<img src="frontend/public/chat-analysis.png" alt="Chat Interface" width="100%" />
+
+### 3. Interactive CTF Guidance
+_Solve Capture The Flag challenges with step-by-step AI guidance and vulnerability analysis._
+<img src="frontend/public/ctf-guidance.png" alt="CTF Guidance" width="100%" />
+
+### 4. Comprehensive Documentation
+_Access a centralized knowledge base for platform features, prompt engineering, and RAG capabilities._
+<img src="frontend/public/docs-preview.png" alt="Documentation Hub" width="100%" />
+
+## 🛠️ Tech Stack
+
+| Component | Technology | Description |
+|-----------|------------|-------------|
+| **Frontend** | Next.js 15, React 19 | Server-side rendering, App Router, Tailwind CSS |
+| **Backend** | Rust, Actix-Web | High-performance async API, ONNX Runtime integration |
+| **Database** | PostgreSQL + pgvector | Vector similarity search and relational data |
+| **AI/ML** | FastEmbed, ONNX | Local embedding generation, dynamic model loading |
+| **DevOps** | Docker, Nginx | Containerized deployment, reverse proxy |
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Docker & Docker Compose
+- Node.js 18+ (for local frontend dev)
+- Rust 1.75+ (for local backend dev)
+
+### Quick Start (Docker)
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/yourusername/kryptonsecai.git
+   cd kryptonsecai
+   ```
+
+2. **Start the application**
+   ```bash
+   docker-compose up --build
+   ```
+   
+   - **Frontend**: `http://localhost:3000`
+   - **Backend**: `http://localhost:8080`
+
+### Local Development
+
+#### Backend (Rust)
 ```bash
 cd backend
 cp .env.example .env
 cargo run
 ```
 
-Frontend:
+#### Frontend (Next.js)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
-## Environment Variables
-Backend (.env):
-- OPENROUTER_API_KEY
-- JWT_SECRET
-- DATABASE_URL (optional for local; Docker uses postgres service)
+## 🌍 Deployment
 
-Frontend:
-- NEXT_PUBLIC_API_URL (defaults to http://localhost:8080 in Docker)
+This project includes a production-ready `docker-compose.yml` and `nginx.conf`.
 
-## API Overview
-- POST /api/auth/register
-- POST /api/auth/login
-- POST /api/vouchers/generate (admin)
-- POST /api/vouchers/redeem
-- POST /api/chat
-- POST /api/admin/upload
-- POST /api/admin/models
+1. **Configure Environment**:
+   Update `backend/.env` with your production URLs:
+   ```env
+   FRONTEND_BASE_URL=https://kryptonsecai.nextsoft.live
+   DATABASE_URL=postgres://user:pass@db:5432/dbname
+   ```
 
-## Repository Layout
-- backend: Rust API, RAG pipeline, and model orchestration
-- frontend: Next.js UI
-- docker-compose.yml: Postgres + backend + frontend stack
+2. **Deploy**:
+   ```bash
+   ./deploy.sh
+   ```
+
+3. **Access**:
+   The application will be available at `https://kryptonsecai.nextsoft.live`.
+
+## 📜 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+  <p>Built with ❤️ by the NextSoft Team</p>
+</div>
