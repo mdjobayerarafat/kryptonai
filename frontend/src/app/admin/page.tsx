@@ -44,6 +44,7 @@ interface AIModel {
   display_name: string;
   provider: string;
   is_active: boolean;
+  system_prompt?: string;
 }
 
 interface ImportStatus {
@@ -96,7 +97,8 @@ export default function AdminPage() {
       api_model_name: "",
       display_name: "",
       provider: "openrouter",
-      is_active: true
+      is_active: true,
+      system_prompt: ""
   });
 
   const router = useRouter();
@@ -269,7 +271,7 @@ export default function AdminPage() {
           }
           setModelFormOpen(false);
           setEditingModel(null);
-          setModelFormData({ api_model_name: "", display_name: "", provider: "openrouter", is_active: true });
+          setModelFormData({ api_model_name: "", display_name: "", provider: "openrouter", is_active: true, system_prompt: "" });
           fetchModels();
       } catch (err) {
           console.error("Failed to save model", err);
@@ -298,11 +300,12 @@ export default function AdminPage() {
               api_model_name: model.api_model_name,
               display_name: model.display_name,
               provider: model.provider,
-              is_active: model.is_active
+              is_active: model.is_active,
+              system_prompt: model.system_prompt || ""
           });
       } else {
           setEditingModel(null);
-          setModelFormData({ api_model_name: "", display_name: "", provider: "openrouter", is_active: true });
+          setModelFormData({ api_model_name: "", display_name: "", provider: "openrouter", is_active: true, system_prompt: "" });
       }
       setModelFormOpen(true);
   };
@@ -972,6 +975,15 @@ export default function AdminPage() {
                                             <option value="google">Google</option>
                                             <option value="local">Local (Ollama)</option>
                                         </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm text-gray-400 mb-1">System Prompt</label>
+                                        <textarea
+                                            value={modelFormData.system_prompt}
+                                            onChange={(e) => setModelFormData({...modelFormData, system_prompt: e.target.value})}
+                                            className="w-full bg-black border border-white/20 rounded-lg p-3 text-white focus:border-white outline-none h-32 resize-none"
+                                            placeholder="Optional custom system prompt..."
+                                        />
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <input 
