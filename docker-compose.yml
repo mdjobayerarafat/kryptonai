@@ -28,6 +28,7 @@ services:
     environment:
       DATABASE_URL: postgres://krypton:krypton_password@postgres:5432/krypton_db
       REDIS_URL: redis://redis:6379
+      FRONTEND_BASE_URL: https://kryptonsecai.nextsoft.live
       RESEND_API_KEY: re_TXoiLiyk_CfMfYjVZirUrq6FEbpBv2A9E
       EMAIL_FROM: KryptonSecAI <noreply@kryptonsecai.nextsoft.live>
       RUST_LOG: info

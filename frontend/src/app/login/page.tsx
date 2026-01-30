@@ -3,17 +3,19 @@ import { useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Lock, User, Terminal, ArrowRight } from "lucide-react";
+import { Lock, User, Terminal, ArrowRight, Mail, X } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/api";
 
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
   const router = useRouter();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError("");
     try {
       const response = await axios.post(`${getApiBaseUrl()}/api/auth/login`, {
         username,
@@ -23,7 +25,12 @@ export default function Login() {
       localStorage.setItem("role", response.data.role);
       router.push("/chat");
     } catch (err: any) {
-      setError(err.response?.data?.error || "Invalid username or password");
+      const errorMsg = err.response?.data?.error || "Invalid username or password";
+      if (errorMsg === "Email verification required") {
+         setShowVerifyModal(true);
+      } else {
+         setError(errorMsg);
+      }
     }
   };
 
@@ -90,6 +97,46 @@ export default function Login() {
           </div>
         </div>
       </div>
+
+      {/* Verification Required Modal */}
+      {showVerifyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-[#111] border border-white/10 rounded-2xl max-w-md w-full p-6 relative shadow-2xl animate-scale-up">
+            <button 
+              onClick={() => setShowVerifyModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="flex flex-col items-center text-center">
+              <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mb-6 border border-blue-500/20">
+                <Mail size={32} className="text-blue-500" />
+              </div>
+              
+              <h2 className="text-2xl font-bold text-white mb-2">Verify Your Email</h2>
+              
+              <p className="text-gray-300 mb-6 leading-relaxed">
+                We've sent a verification link to your email address. Please verify your account to log in.
+              </p>
+              
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 mb-6 w-full text-left">
+                <p className="text-yellow-400 text-sm font-medium mb-1">⚠️ Can't find the email?</p>
+                <p className="text-gray-400 text-xs">
+                  Please check your <strong>Spam</strong> or <strong>Junk</strong> folder. Sometimes automated emails can end up there.
+                </p>
+              </div>
+              
+              <button 
+                onClick={() => setShowVerifyModal(false)}
+                className="button-primary w-full"
+              >
+                Got it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
