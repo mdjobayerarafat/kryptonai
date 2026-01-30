@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Footer() {
   return (
     <footer className="border-t border-white/10 mt-auto py-16 bg-black">
@@ -5,24 +7,24 @@ export default function Footer() {
         <div className="space-y-4">
            <h4 className="font-medium text-white">Products</h4>
            <ul className="space-y-3">
-              <li><a href="#" className="nav-link">AI Vulnerability Scanner</a></li>
-              <li><a href="#" className="nav-link">CTF Platform</a></li>
-              <li><a href="#" className="nav-link">Interview Prep</a></li>
+              <li><Link href="/features" className="nav-link">AI Vulnerability Scanner</Link></li>
+              <li><Link href="/solutions" className="nav-link">CTF Platform</Link></li>
+              <li><Link href="/resources" className="nav-link">Interview Prep</Link></li>
            </ul>
         </div>
         <div className="space-y-4">
            <h4 className="font-medium text-white">Resources</h4>
            <ul className="space-y-3">
-              <li><a href="#" className="nav-link">Blog</a></li>
-              <li><a href="#" className="nav-link">Careers</a></li>
-              <li><a href="#" className="nav-link">Support</a></li>
+              <li><Link href="/docs" className="nav-link">Documentation</Link></li>
+              <li><Link href="#" className="nav-link">Careers</Link></li>
+              <li><Link href="#" className="nav-link">Support</Link></li>
            </ul>
         </div>
         <div className="space-y-4">
            <h4 className="font-medium text-white">Legal</h4>
            <ul className="space-y-3">
-              <li><a href="#" className="nav-link">Privacy Policy</a></li>
-              <li><a href="#" className="nav-link">Terms of Service</a></li>
+              <li><Link href="/privacy" className="nav-link">Privacy Policy</Link></li>
+              <li><Link href="/terms" className="nav-link">Terms of Service</Link></li>
            </ul>
         </div>
         <div className="col-span-2 md:col-span-1 md:text-right">
