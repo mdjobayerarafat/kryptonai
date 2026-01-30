@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, Shield, CreditCard, LogOut, ArrowLeft, CheckCircle, AlertTriangle, Calendar, Mail, Hash } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/api";
+import Loader from "@/components/loading";
 
 interface UserProfile {
   id: string;
@@ -132,24 +133,17 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return (
-        <div className="min-h-screen bg-black text-gray-200 p-8 flex justify-center items-center font-sans">
-            <div className="flex flex-col items-center gap-4">
-                <div className="w-12 h-12 border-4 border-green-500/30 border-t-green-500 rounded-full animate-spin"></div>
-                <div className="text-green-500 animate-pulse">Loading Profile...</div>
-            </div>
-        </div>
-    );
+    return <Loader />;
   }
 
   return (
     <div className="min-h-screen bg-black text-gray-300 font-sans p-8 animate-fade-in relative overflow-hidden">
       {/* Ambient Background Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-green-500/10 blur-[120px] rounded-full pointer-events-none z-0" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-blue-500/10 blur-[120px] rounded-full pointer-events-none z-0" />
       
       <div className="max-w-4xl mx-auto relative z-10">
         <div className="flex justify-between items-center mb-10">
-          <Link href="/chat" className="flex items-center text-green-500 hover:text-green-400 transition-colors group">
+          <Link href="/chat" className="flex items-center text-blue-500 hover:text-blue-400 transition-colors group">
             <ArrowLeft size={20} className="mr-2 group-hover:-translate-x-1 transition-transform" /> 
             Back to Chat
           </Link>
@@ -165,14 +159,14 @@ export default function ProfilePage() {
             {/* Left Column: Identity Card */}
             <div className="md:col-span-1 space-y-8 animate-slide-up">
                 <div className="bg-[#0a0a0a] rounded-2xl border border-white/10 p-6 shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/10 blur-[60px] rounded-full group-hover:bg-green-500/20 transition-all duration-700"></div>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-[60px] rounded-full group-hover:bg-blue-500/20 transition-all duration-700"></div>
                     
                     <div className="flex flex-col items-center text-center mb-6 relative z-10">
-                        <div className="w-24 h-24 bg-gradient-to-br from-green-500/20 to-blue-500/20 rounded-full flex items-center justify-center mb-4 border border-white/10 shadow-[0_0_15px_rgba(34,197,94,0.2)]">
-                            <User size={40} className="text-green-400" />
+                        <div className="w-24 h-24 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full flex items-center justify-center mb-4 border border-white/10 shadow-[0_0_15px_rgba(59,130,246,0.2)]">
+                            <User size={40} className="text-blue-400" />
                         </div>
                         <h1 className="text-2xl font-bold text-white mb-1">{profile?.fullname || "Anonymous"}</h1>
-                        <p className="text-green-500 text-sm font-mono">@{profile?.username}</p>
+                        <p className="text-blue-500 text-sm font-mono">@{profile?.username}</p>
                     </div>
 
                     <div className="space-y-4 relative z-10">

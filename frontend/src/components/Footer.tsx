@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 export default function Footer() {
   return (
@@ -29,7 +30,8 @@ export default function Footer() {
         </div>
         <div className="col-span-2 md:col-span-1 md:text-right">
            <div className="flex flex-col md:items-end justify-between h-full">
-             <div className="mb-4">
+             <div className="mb-4 flex items-center md:justify-end gap-2">
+                <Image src="/favicon.ico" alt="KryptonSecAI" width={24} height={24} className="w-6 h-6" unoptimized />
                 <span className="font-bold text-white text-lg">KryptonSecAI</span>
              </div>
              <p className="text-gray-500 text-xs">&copy; {new Date().getFullYear()} KryptonSecAI. All rights reserved.</p>

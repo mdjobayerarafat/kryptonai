@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { Terminal, MessageSquare } from "lucide-react";
+import Image from "next/image";
+import { MessageSquare } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -18,7 +19,7 @@ export default function Navbar() {
     <nav className="fixed w-full top-0 z-50 bg-black/50 backdrop-blur-md border-b border-white/10 h-16">
       <div className="container-custom h-full flex items-center justify-between">
         <Link href="/" className="flex items-center space-x-2 text-white hover:opacity-80 transition-opacity">
-          <Terminal size={20} />
+          <Image src="/favicon.ico" alt="KryptonSecAI" width={24} height={24} className="w-6 h-6" unoptimized />
           <span className="font-semibold tracking-tight">KryptonSecAI</span>
         </Link>
         

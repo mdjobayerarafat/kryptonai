@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getApiBaseUrl } from "@/lib/api";
+import Loader from "@/components/loading";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -521,14 +522,14 @@ export default function ChatPage() {
             ))}
             
             {loading && (
-              <div className="flex gap-4">
+              <div className="flex gap-4 animate-fade-in">
                 <div className="w-8 h-8 rounded-lg bg-white text-black flex items-center justify-center shrink-0 mt-1">
                   <Terminal size={16} />
                 </div>
-                <div className="py-3 flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="flex-1 max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden relative h-48">
+                   <div className="absolute inset-0 flex items-center justify-center transform scale-75 origin-center">
+                      <Loader />
+                   </div>
                 </div>
               </div>
             )}
