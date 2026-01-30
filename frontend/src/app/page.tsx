@@ -1,433 +1,276 @@
 "use client";
 import Link from "next/link";
-import Image from "next/image";
-import { Terminal, Shield, Cpu, Fingerprint, Sparkles, ArrowRight, Zap, Code, Database, User, Brain, Bot } from "lucide-react";
+import { Terminal, Shield, Brain, ArrowRight, Check, Code, Zap } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { useEffect, useState } from "react";
+import CyberCube from "@/components/cube";
+import Card from "@/components/cards";
 
-// Cyber Grid Background Component
-const CyberGrid = () => {
-  return <div className="cyber-grid" />;
-};
-
-// Network Lines Component
-const NetworkLines = () => {
-  const [lines, setLines] = useState<Array<{id: number, top: string, left: string, width: string, delay: number}>>([]);
-
-  useEffect(() => {
-    const newLines = Array.from({ length: 8 }, (_, i) => ({
-      id: i,
-      top: `${Math.random() * 100}%`,
-      left: `${Math.random() * 100}%`,
-      width: `${200 + Math.random() * 300}px`,
-      delay: Math.random() * 3
-    }));
-    setLines(newLines);
-  }, []);
-
+export default function Home() {
   return (
-    <div className="network-lines">
-      {lines.map((line) => (
-        <div
-          key={line.id}
-          className="network-line"
-          style={{
-            top: line.top,
-            left: line.left,
-            width: line.width,
-            animationDelay: `${line.delay}s`
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
-// Floating Particle Field Component
-const ParticleField = () => {
-  const [particles, setParticles] = useState<Array<{id: number, left: number, delay: number, duration: number}>>([]);
-
-  useEffect(() => {
-    const newParticles = Array.from({ length: 30 }, (_, i) => ({
-      id: i,
-      left: Math.random() * 100,
-      delay: Math.random() * 8,
-      duration: 12 + Math.random() * 8
-    }));
-    setParticles(newParticles);
-  }, []);
-
-  return (
-    <div className="particle-field">
-      {particles.map((particle) => (
-        <div
-          key={particle.id}
-          className="cyber-particle"
-          style={{
-            left: `${particle.left}%`,
-            animationDelay: `${particle.delay}s`,
-            animationDuration: `${particle.duration}s`
-          }}
-        />
-      ))}
-    </div>
-  );
-};
-
-// Waveform Component
-const Waveform = () => {
-  return (
-    <div className="waveform">
-      {Array.from({ length: 12 }, (_, i) => (
-        <div key={i} className="wave-bar" style={{ animationDelay: `${i * 0.1}s` }} />
-      ))}
-    </div>
-  );
-};
-
-// Timestamp Component
-const Timestamp = () => {
-  const [time, setTime] = useState(new Date());
-
-  useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const formatTime = (date: Date) => {
-    const days = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
-    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    
-    return `${days[date.getDay()]} ${months[date.getMonth()]} ${date.getDate().toString().padStart(2, '0')} ${date.getFullYear()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}:${date.getSeconds().toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <div className="timestamp bloom">
-      {formatTime(time)}
-    </div>
-  );
-};
-
-export default function LandingPage() {
-  return (
-    <div className="min-h-screen bg-black text-gray-100 font-sans selection:bg-green-500/30 selection:text-green-200 flex flex-col relative overflow-hidden">
-      {/* Background Effects */}
-      <CyberGrid />
-      <NetworkLines />
-      <ParticleField />
-      <Timestamp />
-      
+    <div className="min-h-screen bg-black flex flex-col">
       <Navbar />
-
-      {/* Hero Section - Compact Layout */}
-      <main className="flex-1 flex flex-col items-center justify-center pt-20 pb-16 px-4 relative z-20">
-        {/* Reduced Ambient Glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-gradient-radial from-green-500/15 via-cyan-500/8 to-transparent blur-[80px] rounded-full pointer-events-none" />
-        
-        {/* Reduced Background Glow for Cybersecurity Text */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[150px] bg-gradient-radial from-green-500/20 via-green-500/10 to-transparent blur-[60px] rounded-full pointer-events-none" />
-        
-        <div className="max-w-5xl mx-auto text-center z-10 space-y-8">
-          <div className="scanlines relative">
-            {/* Enhanced Glitch Background */}
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-green-500/5 to-transparent animate-pulse pointer-events-none" />
+      
+      <main className="flex-grow pt-32 pb-16">
+        {/* Hero Section */}
+        <section className="container-custom relative z-10">
+          <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+            <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 rounded-full px-3 py-1 mb-8 animate-fade-in">
+              <span className="flex h-2 w-2 rounded-full bg-white"></span>
+              <span className="text-sm text-gray-400">KryptonSec AI 2.0 is now live</span>
+            </div>
             
-            <h1 className="text-6xl md:text-8xl font-bold tracking-tight leading-[1.1] relative">
-              <div className="mb-2">
-                <span className="cyber-heading">The future of</span>
-              </div>
-              
-              {/* Cybersecurity Text with Better Spacing */}
-              <div className="mb-6">
-                <span className="neon-text neon-glow">
-                  cybersecurity
-                </span> 
-                <span className="cyber-heading"> is</span>
-              </div>
-              
-              {/* Compact Human + AI Section */}
-              <div className="flex items-center justify-center gap-4 md:gap-6">
-                <div className="flex items-center gap-3 glass-panel px-6 py-4 rounded-xl relative group">
-                  <User size={40} className="neon-text bloom relative z-10" strokeWidth={1.5} />
-                  <span className="text-2xl md:text-3xl font-bold cyber-heading relative z-10">
-                    human
-                  </span>
-                </div>
-                
-                <span className="text-3xl text-gray-400 neon-text">+</span>
-                
-                <div className="flex items-center gap-3 glass-panel px-6 py-4 rounded-xl relative group">
-                  <Bot size={40} className="neon-text bloom relative z-10" strokeWidth={1.5} />
-                  <span className="text-2xl md:text-3xl font-bold cyber-heading relative z-10">
-                    AI
-                  </span>
-                </div>
-              </div>
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6 animate-fade-in delay-100">
+              Cybersecurity for <br />
+              <span className="text-gray-500">developers.</span>
             </h1>
-          </div>
-
-          <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto font-light leading-relaxed px-4">
-            We help you map the vulnerabilities you need to find, track the skills you have, 
-            and close your security gaps to thrive in a <span className="neon-text">GenAI world</span>.
-          </p>
-
-          {/* Compact CTA Button */}
-          <div className="pt-6 mb-12">
-            <Link 
-              href="/register"
-              className="cyber-button bloom text-lg px-10 py-4 inline-flex items-center gap-3 relative group"
-            >
-              
-              <span className="relative z-10">Join The Community</span>
-              <ArrowRight size={20} className="relative z-10" />
-            </Link>
-          </div>
-
-          {/* Enhanced Holographic Terminal Interface */}
-          <div className="holo-card p-6 max-w-4xl mx-auto relative group">
-            {/* Enhanced holographic glow */}
-            <div className="absolute inset-0 bg-gradient-to-br from-green-500/15 via-cyan-500/8 to-green-500/15 rounded-3xl blur-xl group-hover:blur-2xl transition-all duration-700" />
             
-            <div className="relative bg-black/80 backdrop-blur-xl border-2 border-green-500/40 rounded-2xl overflow-hidden">
-              {/* Terminal Header */}
-              <div className="bg-gradient-to-r from-green-500/20 to-cyan-500/20 p-3 border-b border-green-500/30">
-                <div className="flex items-center gap-3">
-                  <div className="flex gap-2">
-                    <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                    <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                  </div>
-                  <span className="neon-text font-mono text-sm">KryptonSecAI Terminal v2.1.0</span>
-                </div>
-              </div>
-              
-              {/* Terminal Content */}
-              <div className="p-6 font-mono text-green-400 space-y-2 text-left">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="neon-text text-base">SYSTEM READY</span>
-                </div>
-                
-                <div className="space-y-1 text-sm">
-                  <div className="flex">
-                    <span className="text-green-300">krypton@ai:~$</span>
-                    <span className="ml-2">&gt; Initializing neural network...</span>
-                  </div>
-                  <div className="text-green-300 ml-16">[✓] Neural pathways: ACTIVE</div>
-                  <div className="text-green-300 ml-16">[✓] Threat intelligence: LOADED</div>
-                  
-                  <div className="flex">
-                    <span className="text-green-300">krypton@ai:~$</span>
-                    <span className="ml-2">&gt; Loading vulnerability database...</span>
-                  </div>
-                  <div className="text-green-300 ml-16">[✓] CVE Database: 247,891 entries</div>
-                  <div className="text-green-300 ml-16">[✓] Zero-day signatures: UPDATED</div>
-                  
-                  <div className="flex">
-                    <span className="text-green-300">krypton@ai:~$</span>
-                    <span className="ml-2">&gt; AI vulnerability scanner: <span className="neon-text">ONLINE</span></span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 pt-2">
-                    <span className="text-green-300">Status:</span>
-                    <div className="flex gap-1">
-                      {Array.from({ length: 8 }, (_, i) => (
-                        <div key={i} className="w-1 h-3 bg-green-500 animate-pulse" style={{ animationDelay: `${i * 0.1}s` }} />
-                      ))}
-                    </div>
-                    <span className="neon-text">Ready for engagement</span>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Scanning line effect */}
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-green-500 to-transparent animate-pulse" />
-            </div>
-          </div>
-        </div>
-
-        {/* Feature Showcase Section */}
-        <div className="w-full max-w-7xl mx-auto px-4 py-32 space-y-32">
-          {/* Advanced Profile Tracking */}
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-8">
-              <h2 className="text-5xl md:text-6xl font-bold">
-                <span className="neon-text">Advanced</span><br />
-                <span className="cyber-heading">Profile Tracking</span>
-              </h2>
-              <p className="text-xl text-gray-300 leading-relaxed">
-                Keep track of your security clearance, valid licenses, and role status. 
-                Redeem vouchers seamlessly to extend your access to advanced AI tools.
-              </p>
-              
-              <div className="glass-card p-8 space-y-6">
-                <div className="flex items-center gap-4">
-                  <Shield className="neon-text bloom" size={32} />
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Real-time License Status</h3>
-                    <p className="text-gray-400">Continuous monitoring and validation</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Database className="neon-text bloom" size={32} />
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Role-based Access Control</h3>
-                    <p className="text-gray-400">Granular permission management</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <p className="text-xl text-gray-400 max-w-2xl mb-10 animate-fade-in delay-200">
+              The best way to secure your applications. 
+              Automated vulnerability scanning, CTF challenges, and AI-driven security insights.
+            </p>
             
-            <div className="hex-container">
-              <div className="holo-card p-6">
-                <Image 
-                  src="/profile-showcase.png" 
-                  alt="Profile Dashboard" 
-                  width={800} 
-                  height={600} 
-                  className="w-full h-auto rounded-xl"
-                  unoptimized
-                />
-                <div className="absolute top-4 left-4 glass-panel px-4 py-2 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="neon-text font-mono text-sm">AUTHENTICATED</span>
-                  </div>
-                </div>
-              </div>
+            <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4 animate-fade-in delay-300">
+              <Link href="/register" className="button-primary h-12 px-8 text-base">
+                Get Started <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+              <Link href="/docs" className="button-secondary h-12 px-8 text-base">
+                Documentation
+              </Link>
+            </div>
+
+            {/* Visual Representation (Cyber Cube) */}
+            <div className="mt-20 relative w-full max-w-5xl animate-fade-in delay-300 perspective-1000 flex justify-center items-center h-[400px]">
+               <div className="relative z-10 scale-110 hover:scale-125 transition-transform duration-700 ease-in-out cursor-pointer">
+                  <CyberCube />
+               </div>
+               {/* Ambient Glow */}
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-white/5 blur-[100px] rounded-full pointer-events-none" />
+               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150px] h-[150px] bg-white/10 blur-[50px] rounded-full pointer-events-none animate-pulse" />
             </div>
           </div>
+        </section>
 
-          {/* AI-Powered Vulnerability Analysis */}
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="order-2 lg:order-1 hex-container">
-              <div className="holo-card p-6">
-                <Image 
-                  src="/chat-analysis.png" 
-                  alt="AI Analysis" 
-                  width={800} 
-                  height={600} 
-                  className="w-full h-auto rounded-xl"
-                  unoptimized
-                />
-                <div className="absolute bottom-4 left-4 right-4 glass-panel p-4 rounded-lg">
-                  <div className="font-mono text-green-400 text-sm">
-                    <div>&gt; Analyzing binary: exploit.exe</div>
-                    <div>&gt; Vulnerability detected: <span className="neon-text">CVE-2024-1337</span></div>
-                    <div>&gt; Generating countermeasures...</div>
-                  </div>
-                </div>
-              </div>
+        {/* Chat Demo Section */}
+        <section className="container-custom mt-32 relative z-10">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 rounded-full px-3 py-1 mb-6">
+              <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
+              <span className="text-sm text-gray-400">Interactive AI Assistant</span>
             </div>
-            
-            <div className="order-1 lg:order-2 space-y-8">
-              <h2 className="text-5xl md:text-6xl font-bold">
-                <span className="neon-text">AI-Powered</span><br />
-                <span className="cyber-heading">Vulnerability Analysis</span>
-              </h2>
-              <p className="text-xl text-gray-300 leading-relaxed">
-                Interact with Krypton AI to analyze CTF challenges, understand complex vulnerabilities, 
-                and learn ethical hacking concepts in real-time.
-              </p>
-              
-              <div className="glass-card p-8 space-y-6">
-                <div className="flex items-center gap-4">
-                  <Terminal className="neon-text bloom" size={32} />
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Context-aware Responses</h3>
-                    <p className="text-gray-400">Intelligent threat analysis</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <Code className="neon-text bloom" size={32} />
-                  <div>
-                    <h3 className="text-xl font-bold text-white">Specialized Knowledge</h3>
-                    <p className="text-gray-400">Cybersecurity domain expertise</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Choose Your Adventure Section */}
-        <div className="w-full max-w-7xl mx-auto px-4 py-20">
-          <div className="text-center mb-20">
-            <h2 className="text-6xl md:text-7xl font-bold mb-8">
-              <span className="cyber-heading">Choose Your</span> <span className="neon-text neon-glow">Adventure</span>
+            <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+              Solve CTFs with <span className="text-gray-500">AI Guidance</span>
             </h2>
-            <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-              We build elite tech teams for companies and enhance candidates' tech skills and job prospects.
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              Get real-time assistance, vulnerability analysis, and step-by-step explanations for your security challenges.
             </p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-12">
-            {/* For Hackers Card */}
-            <div className="glass-card p-12 group relative">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 blur-[80px] rounded-full group-hover:bg-green-500/20 transition-colors duration-500" />
-              
-              <div className="relative z-10 space-y-8">
-                <div className="flex items-center gap-4 mb-6">
-                  <Terminal className="neon-text bloom" size={48} />
-                  <h3 className="text-4xl font-bold cyber-heading">For Hackers</h3>
-                </div>
-                
-                <p className="text-xl text-gray-300 leading-relaxed">
-                  Hone your ethical hacking skills and become GenAI-ready.
-                </p>
-                
-                <div className="glass-panel p-6 rounded-xl font-mono text-green-400 text-sm space-y-2">
-                  <div>&gt; nmap -sS -O target.com</div>
-                  <div className="text-green-300 ml-4">22/tcp   open  ssh</div>
-                  <div className="text-green-300 ml-4">80/tcp   open  http</div>
-                  <div className="text-green-300 ml-4">443/tcp  open  https</div>
-                  <div>&gt; metasploit -x "use exploit/multi/handler"</div>
-                  <div className="text-green-300 ml-4">payload =&gt; windows/meterpreter/reverse_tcp</div>
-                  <div>&gt; john --wordlist=rockyou.txt hashes.txt</div>
-                  <div className="neon-text">[SUCCESS] Password cracked: admin123</div>
-                </div>
-
-                <Link href="/register" className="cyber-button w-full text-center block">
-                  Explore Hacker Community
-                </Link>
-              </div>
-            </div>
-
-            {/* For Researchers Card */}
-            <div className="glass-card p-12 group relative">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/10 blur-[80px] rounded-full group-hover:bg-cyan-500/20 transition-colors duration-500" />
-              
-              <div className="relative z-10 space-y-8">
-                <div className="flex items-center gap-4 mb-6">
-                  <Cpu className="neon-text bloom" size={48} />
-                  <h3 className="text-4xl font-bold cyber-heading">For Researchers</h3>
-                </div>
-                
-                <p className="text-xl text-gray-300 leading-relaxed">
-                  Get your security research GenAI ready.
-                </p>
-                
-                <div className="glass-panel p-6 rounded-xl space-y-4">
-                  <div className="font-mono text-green-400 text-sm space-y-2">
-                    <div>&gt; python3 ai_defense.py --model=gpt4</div>
-                    <div className="text-green-300 ml-4">Loading threat intelligence...</div>
-                    <div className="text-green-300 ml-4">ML Model: 99.7% accuracy</div>
-                    <div>&gt; docker run --gpus all threat-hunter</div>
-                    <div className="neon-text ml-4">Zero-day detection: ENABLED</div>
+          <div className="max-w-4xl mx-auto">
+            <div className="relative rounded-xl overflow-hidden border border-white/10 bg-black/50 backdrop-blur-xl shadow-2xl">
+              {/* Window Controls */}
+              <div className="flex items-center justify-between px-4 py-3 bg-white/5 border-b border-white/5">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1.5">
+                    <div className="w-3 h-3 rounded-full bg-red-500/50" />
+                    <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
+                    <div className="w-3 h-3 rounded-full bg-green-500/50" />
                   </div>
-                  <Waveform />
+                </div>
+                <div className="text-xs text-gray-500 font-mono">krypton_ai_session.log</div>
+                <div className="w-12" /> {/* Spacer for centering */}
+              </div>
+
+              {/* Chat Interface */}
+              <div className="p-6 space-y-6 font-mono text-sm">
+                {/* User Message */}
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-4 h-4 rounded-full bg-white" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="text-xs text-gray-500">User</div>
+                    <div className="p-3 rounded-lg bg-white/5 text-gray-200 inline-block border border-white/5">
+                      I found a binary file in the /tmp directory. How do I analyze it?
+                    </div>
+                  </div>
                 </div>
 
-                <Link href="/register" className="cyber-button w-full text-center block">
-                  Explore Research Hub
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
+                {/* AI Response */}
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                    <div className="w-4 h-4 rounded-full bg-black" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="text-xs text-gray-500">KryptonSecAI</div>
+                    <div className="p-4 rounded-lg bg-white/10 text-gray-200 border border-white/5">
+                      <p className="mb-3">You can use several tools to analyze the binary. Here's a quick workflow:</p>
+                      
+                      <div className="relative group my-3 rounded-lg overflow-hidden border border-white/10 bg-black/50">
+                        <div className="flex items-center justify-between px-3 py-1.5 bg-white/5 border-b border-white/5">
+                          <span className="text-xs text-gray-500">Bash</span>
+                        </div>
+                        <div className="p-3 overflow-x-auto">
+                          <code className="text-green-400">
+                            <span className="text-gray-500"># Check file type</span><br/>
+                            file /tmp/binary<br/><br/>
+                            <span className="text-gray-500"># Extract strings</span><br/>
+                            strings /tmp/binary | head -n 10<br/><br/>
+                            <span className="text-gray-500"># Disassemble</span><br/>
+                            objdump -d /tmp/binary
+                          </code>
+                        </div>
+                      </div>
+                      
+                      <p>Would you like me to scan it for common buffer overflow vulnerabilities?</p>
+                    </div>
+                  </div>
+                </div>
 
+                {/* User Message 2 */}
+                <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-4 h-4 rounded-full bg-white" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="text-xs text-gray-500">User</div>
+                    <div className="p-3 rounded-lg bg-white/5 text-gray-200 inline-block border border-white/5">
+                      Yes, scan it.
+                    </div>
+                  </div>
+                </div>
+
+                 {/* AI Response 2 */}
+                 <div className="flex gap-4 items-start">
+                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+                    <div className="w-4 h-4 rounded-full bg-black" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="text-xs text-gray-500">KryptonSecAI</div>
+                    <div className="p-4 rounded-lg bg-white/10 text-gray-200 border border-white/5">
+                      <div className="flex items-center gap-2 mb-2 text-green-400">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                        Scanning complete.
+                      </div>
+                      <p className="mb-2">Found potential buffer overflow vulnerability:</p>
+                      <ul className="list-disc list-inside text-gray-300 space-y-1 mb-2 pl-2">
+                         <li>Function: <code className="bg-white/10 px-1 py-0.5 rounded text-xs">vuln_func()</code></li>
+                         <li>Address: <code className="bg-white/10 px-1 py-0.5 rounded text-xs">0x080484b6</code></li>
+                         <li>Risk: <span className="text-red-400">High</span></li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Input Area Mockup */}
+               <div className="p-4 border-t border-white/5 bg-white/5">
+                  <div className="flex gap-2 items-center bg-black/50 border border-white/10 rounded-lg px-4 py-3">
+                     <span className="text-gray-500">$</span>
+                     <div className="h-4 w-1.5 bg-green-500 animate-pulse" />
+                  </div>
+               </div>
+            </div>
+            
+            {/* Decorative Glow */}
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-3xl max-h-[500px] bg-green-500/10 blur-[120px] rounded-full pointer-events-none -z-10" />
+          </div>
+        </section>
+
+        {/* Feature Grid */}
+        <section className="container-custom mt-32">
+          <div className="mb-12">
+            <h2 className="text-3xl font-bold text-white mb-4">Everything you need to secure your stack</h2>
+            <p className="text-gray-400 text-lg">Comprehensive tools for modern security teams.</p>
+          </div>
+          
+          <div className="grid md:grid-cols-3 gap-6">
+            <Card className="group cursor-pointer">
+              <div className="h-12 w-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 group-hover:bg-white/10 transition-colors">
+                <Shield className="text-white" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Vulnerability Scanner</h3>
+              <p className="text-gray-400">
+                Automated scanning for your codebase and infrastructure. Detect SQLi, XSS, and misconfigurations in real-time.
+              </p>
+            </Card>
+            
+            <Card className="group cursor-pointer">
+              <div className="h-12 w-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 group-hover:bg-white/10 transition-colors">
+                <Brain className="text-white" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">AI-Driven Insights</h3>
+              <p className="text-gray-400">
+                Leverage our RAG-powered AI to understand security reports and get actionable remediation steps.
+              </p>
+            </Card>
+            
+            <Card className="group cursor-pointer">
+              <div className="h-12 w-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 group-hover:bg-white/10 transition-colors">
+                <Terminal className="text-white" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">CTF Platform</h3>
+              <p className="text-gray-400">
+                Sharpen your skills with our built-in Capture The Flag challenges. Learn by doing in a safe environment.
+              </p>
+            </Card>
+
+            <Card className="group cursor-pointer">
+              <div className="h-12 w-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 group-hover:bg-white/10 transition-colors">
+                <Code className="text-white" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">API Security</h3>
+              <p className="text-gray-400">
+                Secure your API endpoints with automated testing and rate limiting analysis.
+              </p>
+            </Card>
+
+            <Card className="group cursor-pointer">
+              <div className="h-12 w-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 group-hover:bg-white/10 transition-colors">
+                <Zap className="text-white" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Fast Performance</h3>
+              <p className="text-gray-400">
+                Powered by Rust and accelerated by Redis for lightning-fast scans and report generation.
+              </p>
+            </Card>
+
+            <Card className="group cursor-pointer">
+              <div className="h-12 w-12 bg-white/5 rounded-lg flex items-center justify-center mb-6 group-hover:bg-white/10 transition-colors">
+                <Check className="text-white" size={24} />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Compliance Ready</h3>
+              <p className="text-gray-400">
+                Generate reports compliant with SOC2, GDPR, and ISO standards with a single click.
+              </p>
+            </Card>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="container-custom mt-32 mb-16">
+          <div className="card relative overflow-hidden text-center py-20 px-6">
+             <div className="relative z-10 max-w-2xl mx-auto">
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Ready to secure your future?</h2>
+                <p className="text-gray-400 mb-8 text-lg">
+                  Join thousands of developers using KryptonSec to build safer applications today.
+                </p>
+                <Link href="/register" className="button-primary h-12 px-8 text-base">
+                  Get Started for Free
+                </Link>
+             </div>
+             
+             {/* Abstract background for CTA */}
+             <div className="absolute top-0 left-0 w-full h-full opacity-30 pointer-events-none">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-gradient-to-r from-gray-500/20 to-white/10 blur-[100px] rounded-full" />
+             </div>
+          </div>
+        </section>
+
+      </main>
       <Footer />
     </div>
   );

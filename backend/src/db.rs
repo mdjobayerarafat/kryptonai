@@ -94,6 +94,7 @@ pub async fn init_db() -> DbPool {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
         )"#,
+        r#"CREATE INDEX IF NOT EXISTS documents_embedding_idx ON documents USING hnsw (embedding vector_cosine_ops)"#,
     ];
 
     for query in queries {

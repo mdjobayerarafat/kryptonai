@@ -4,21 +4,31 @@ use crate::db::DbPool;
 use crate::models::RAGChunk;
 use pgvector::Vector;
 use std::sync::Mutex;
+use redis::AsyncCommands;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
 pub struct RagSystem {
     model: Mutex<TextEmbedding>,
     pub pool: DbPool,
+    pub redis: Option<redis::Client>,
 }
 
 impl RagSystem {
-    pub fn new(pool: DbPool) -> Self {
+    pub fn new(pool: DbPool, redis: Option<redis::Client>) -> Self {
         let options = InitOptions::new(EmbeddingModel::AllMiniLML6V2)
             .with_show_download_progress(true);
 
         let model = TextEmbedding::try_new(options)
             .expect("Failed to load embedding model");
 
-        Self { model: Mutex::new(model), pool }
+        Self { model: Mutex::new(model), pool, redis }
+    }
+
+    fn get_cache_key(&self, query: &str) -> String {
+        let mut hasher = DefaultHasher::new();
+        query.hash(&mut hasher);
+        format!("rag:search:{}", hasher.finish())
     }
 
     pub async fn add_document(&self, content: &str, metadata: Option<serde_json::Value>) -> Result<String, Box<dyn std::error::Error>> {
@@ -43,6 +53,19 @@ impl RagSystem {
     }
 
     pub async fn search(&self, query: &str, limit: usize) -> Result<Vec<RAGChunk>, Box<dyn std::error::Error>> {
+        // 1. Try Cache
+        if let Some(client) = &self.redis {
+            let key = self.get_cache_key(query);
+            if let Ok(mut con) = client.get_multiplexed_async_connection().await {
+                let cached: Option<String> = con.get(&key).await.unwrap_or(None);
+                if let Some(json) = cached {
+                    if let Ok(chunks) = serde_json::from_str::<Vec<RAGChunk>>(&json) {
+                        return Ok(chunks);
+                    }
+                }
+            }
+        }
+
         let query_embedding = self.model.lock().unwrap().embed(vec![query.to_string()], None)?;
         let query_vec = Vector::from(query_embedding[0].clone());
 
@@ -65,6 +88,16 @@ impl RagSystem {
                 RAGChunk { id, content, score: score as f32 }
             })
             .collect();
+
+        // 2. Save to Cache (TTL: 1 hour)
+        if let Some(client) = &self.redis {
+            let key = self.get_cache_key(query);
+            if let Ok(json) = serde_json::to_string(&chunks) {
+                if let Ok(mut con) = client.get_multiplexed_async_connection().await {
+                    let _: () = con.set_ex(key, json, 3600).await.unwrap_or(());
+                }
+            }
+        }
 
         Ok(chunks)
     }

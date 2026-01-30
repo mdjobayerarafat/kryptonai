@@ -20,10 +20,14 @@
          const res = await axios.post(`${getApiBaseUrl()}/api/auth/verify`, { token });
          setStatus("success");
          setMessage(res.data?.message || "Email verified successfully");
-       } catch (err: any) {
-         setStatus("error");
-         setMessage(err.response?.data?.error || "Verification failed");
-       }
+       } catch (err) {
+        setStatus("error");
+        if (axios.isAxiosError(err)) {
+          setMessage(err.response?.data?.error || "Verification failed");
+        } else {
+          setMessage("Verification failed");
+        }
+      }
      };
      run();
    }, [token]);

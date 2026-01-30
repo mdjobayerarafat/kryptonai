@@ -15,10 +15,11 @@ use std::sync::{Arc, Mutex};
 use chrono::{Utc, Duration};
 use uuid::Uuid;
 use sqlx::Row;
-use lettre::{AsyncTransport, Message};
-use lettre::transport::smtp::authentication::Credentials;
-use lettre::Tokio1Executor;
 use std::env;
+use redis::AsyncCommands;
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
+
 
 pub struct AppState {
     pub rag: Arc<RagSystem>,
@@ -34,6 +35,7 @@ async fn require_verified(user: &AuthenticatedUser, pool: &DbPool) -> Result<Use
 
     match user_db {
         Ok(Some(u)) => {
+            // Admin bypass verification
             if !u.email_verified && u.role != "admin" {
                 Err(HttpResponse::Forbidden().json(json!({"error": "Email verification required"})))
             } else {
@@ -695,20 +697,126 @@ async fn chat(
         .fetch_optional(&state.rag.pool)
         .await;
 
-    if let Ok(Some(u)) = user_db {
-        if !u.email_verified && u.role != "admin" {
-            return HttpResponse::Forbidden().json(json!({"error": "Email verification required"}));
-        }
-        if let Some(sub_end) = u.subscription_end {
-            if sub_end < Utc::now().naive_utc() {
-                 return HttpResponse::PaymentRequired().json(json!({"error": "Subscription expired. Please redeem a voucher."}));
-            }
-        } else {
-             // No subscription
-             return HttpResponse::PaymentRequired().json(json!({"error": "Subscription required. Please redeem a voucher."}));
+    let u = match user_db {
+        Ok(Some(u)) => u,
+        _ => return HttpResponse::Unauthorized().json(json!({"error": "User not found"})),
+    };
+
+    if !u.email_verified && u.role != "admin" {
+        return HttpResponse::Forbidden().json(json!({"error": "Email verification required"}));
+    }
+
+    if let Some(sub_end) = u.subscription_end {
+        if sub_end < Utc::now().naive_utc() {
+             return HttpResponse::PaymentRequired().json(json!({"error": "Subscription expired. Please redeem a voucher."}));
         }
     } else {
-         return HttpResponse::Unauthorized().json(json!({"error": "User not found"}));
+         // No subscription
+         return HttpResponse::PaymentRequired().json(json!({"error": "Subscription required. Please redeem a voucher."}));
+    }
+
+    // Custom Greeting Logic
+    let msg_lower = body.message.trim().to_lowercase();
+    let greeting_patterns = ["hi", "hello", "hey", "greetings", "hi krypton", "hello krypton"];
+    if greeting_patterns.contains(&msg_lower.as_str()) {
+        let name = u.fullname.as_ref().filter(|s| !s.is_empty()).unwrap_or(&u.username);
+        let response_text = format!(
+            "Hello {}! 👋 I'm Krypton, your dedicated cybersecurity mentor and CTF challenge expert. Whether you're tackling a web exploit, reverse-engineering a binary, analyzing forensic artifacts, or deciphering cryptography—I'm here to guide you through it!\n\nHow can I assist you today?\n\n🕵️‍♂️ Stuck on a CTF challenge? Share the details (category, background, task).\n🔍 Need help analyzing a suspicious file/pcap/artifact?\n📚 Want a deep dive into a security concept?\n🚀 Just starting? Let me suggest beginner-friendly CTF platforms!\nProvide a challenge snippet, task description, or your current approach so I can tailor the guidance!\n\nRemember: All assistance is strictly for educational purposes and ethical hacking. 💻✨",
+            name
+        );
+        
+        // Prepare Session
+        let session_id = if let Some(sid) = &body.session_id {
+            sid.clone()
+        } else {
+            let new_sid = Uuid::new_v4().to_string();
+            let title = "Greeting";
+            let _ = sqlx::query("INSERT INTO chat_sessions (id, user_id, title) VALUES ($1, $2, $3)")
+                .bind(&new_sid)
+                .bind(&user.id)
+                .bind(title)
+                .execute(&state.rag.pool)
+                .await;
+            new_sid
+        };
+
+        // Save User Message
+        let user_msg_id = Uuid::new_v4().to_string();
+        let _ = sqlx::query("INSERT INTO chat_messages (id, session_id, role, content) VALUES ($1, $2, 'user', $3)")
+            .bind(&user_msg_id)
+            .bind(&session_id)
+            .bind(&body.message)
+            .execute(&state.rag.pool)
+            .await;
+
+        // Save AI Response
+        let ai_msg_id = Uuid::new_v4().to_string();
+        let _ = sqlx::query("INSERT INTO chat_messages (id, session_id, role, content) VALUES ($1, $2, 'assistant', $3)")
+            .bind(&ai_msg_id)
+            .bind(&session_id)
+            .bind(&response_text)
+            .execute(&state.rag.pool)
+            .await;
+            
+        // Update session
+        let _ = sqlx::query("UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = $1")
+            .bind(&session_id)
+            .execute(&state.rag.pool)
+            .await;
+
+        return HttpResponse::Ok().json(ChatResponse { response: response_text, session_id });
+    }
+
+    // Redis Cache Check
+    let model = body.model.clone().unwrap_or_else(|| "deepseek/deepseek-r1-0528:free".to_string());
+    let mut hasher = DefaultHasher::new();
+    body.message.hash(&mut hasher);
+    model.hash(&mut hasher);
+    let cache_key = format!("chat:response:{}", hasher.finish());
+
+    if let Some(client) = &state.rag.redis {
+        if let Ok(mut con) = client.get_multiplexed_async_connection().await {
+            let cached: Option<String> = con.get(&cache_key).await.unwrap_or(None);
+            if let Some(content) = cached {
+                // Return cached response
+                let session_id = if let Some(sid) = &body.session_id {
+                    sid.clone()
+                } else {
+                    let new_sid = Uuid::new_v4().to_string();
+                    let title: String = body.message.chars().take(30).collect();
+                    let _ = sqlx::query("INSERT INTO chat_sessions (id, user_id, title) VALUES ($1, $2, $3)")
+                        .bind(&new_sid)
+                        .bind(&user.id)
+                        .bind(&title)
+                        .execute(&state.rag.pool)
+                        .await;
+                    new_sid
+                };
+
+                let user_msg_id = Uuid::new_v4().to_string();
+                let _ = sqlx::query("INSERT INTO chat_messages (id, session_id, role, content) VALUES ($1, $2, 'user', $3)")
+                    .bind(&user_msg_id)
+                    .bind(&session_id)
+                    .bind(&body.message)
+                    .execute(&state.rag.pool)
+                    .await;
+
+                let ai_msg_id = Uuid::new_v4().to_string();
+                let _ = sqlx::query("INSERT INTO chat_messages (id, session_id, role, content) VALUES ($1, $2, 'assistant', $3)")
+                    .bind(&ai_msg_id)
+                    .bind(&session_id)
+                    .bind(&content)
+                    .execute(&state.rag.pool)
+                    .await;
+                
+                let _ = sqlx::query("UPDATE chat_sessions SET updated_at = CURRENT_TIMESTAMP WHERE id = $1")
+                    .bind(&session_id)
+                    .execute(&state.rag.pool)
+                    .await;
+
+                return HttpResponse::Ok().json(ChatResponse { response: content, session_id });
+            }
+        }
     }
 
     // 1. Search RAG
@@ -849,6 +957,13 @@ async fn chat(
                     .unwrap_or("No response from AI")
                     .to_string();
                 
+                // Cache response in Redis with TTL (1 hour)
+                if let Some(client) = &state.rag.redis {
+                    if let Ok(mut con) = client.get_multiplexed_async_connection().await {
+                        let _: () = con.set_ex(&cache_key, &content, 3600).await.unwrap_or(());
+                    }
+                }
+
                 // Save AI response
                 let ai_msg_id = Uuid::new_v4().to_string();
                 let _ = sqlx::query("INSERT INTO chat_messages (id, session_id, role, content) VALUES ($1, $2, 'assistant', $3)")
@@ -1262,28 +1377,108 @@ async fn process_knowledge_file(state: web::Data<AppState>, file_path: String) -
 }
 
 async fn send_verification_email(to_email: String, to_name: String, verify_link: String) -> Result<(), Box<dyn std::error::Error>> {
-    let smtp_host = env::var("SMTP_HOST")?;
-    let smtp_port: u16 = env::var("SMTP_PORT").unwrap_or_else(|_| "587".to_string()).parse().unwrap_or(587);
-    let smtp_user = env::var("SMTP_USER")?;
-    let smtp_pass = env::var("SMTP_PASS")?;
-    let from_email = env::var("SMTP_FROM").unwrap_or_else(|_| smtp_user.clone());
-    let from_name = env::var("SMTP_FROM_NAME").unwrap_or_else(|_| "KryptonSecAI".to_string());
+    let api_key = env::var("RESEND_API_KEY").unwrap_or_default();
+    if api_key.is_empty() {
+        println!("RESEND_API_KEY not set. Skipping email sending.");
+        return Ok(());
+    }
 
-    let email = Message::builder()
-        .from(format!("{} <{}>", from_name, from_email).parse()?)
-        .to(format!("{} <{}>", to_name, to_email).parse()?)
-        .subject("Verify your email")
-        .body(format!(
-            "Welcome to KryptonSecAI,\n\nPlease verify your email by clicking the link below:\n{}\n\nIf you did not create this account, you can ignore this email.",
-            verify_link
-        ))?;
+    let from_email = env::var("EMAIL_FROM").unwrap_or_else(|_| "KryptonSecAI <onboarding@resend.dev>".to_string());
 
-    let creds = Credentials::new(smtp_user, smtp_pass);
-    let mailer = lettre::AsyncSmtpTransport::<Tokio1Executor>::relay(&smtp_host)?
-        .credentials(creds)
-        .port(smtp_port)
-        .build();
+    let text_content = format!(
+        "Protocol: Identity Verification\n\nGreetings, {}.\n\nAccess request received. To proceed with your induction into the KryptonSecAI network, validation of your communication channel is required.\n\nVerify Email Access: {}\n\nIf this request was not initiated by you, terminate this message immediately. No further action is required.\n\nSECURE TRANSMISSION // KRYPTON SEC AI\n(c) 2025 Krypton Security. All rights reserved.",
+        to_name, verify_link
+    );
 
-    let _ = mailer.send(email).await?;
+    let client = reqwest::Client::new();
+    let res = client
+        .post("https://api.resend.com/emails")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&json!({
+            "from": from_email,
+            "to": [to_email],
+            "subject": "Verify your email - KryptonSecAI",
+            "text": text_content,
+            "html": format!(r#"
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verify your email</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #000000; font-family: 'Courier New', Courier, monospace; color: #e0e0e0;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #000000; padding: 40px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #0a0a0a; border: 1px solid #333333; border-radius: 8px; box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 30px 40px; border-bottom: 1px solid #333333; text-align: center;">
+              <h1 style="margin: 0; color: #00ff00; font-size: 24px; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);">KryptonSecAI</h1>
+            </td>
+          </tr>
+          
+          <!-- Content -->
+          <tr>
+            <td style="padding: 40px;">
+              <h2 style="margin-top: 0; color: #ffffff; font-size: 20px; border-left: 3px solid #00ff00; padding-left: 15px;">Protocol: Identity Verification</h2>
+              <p style="margin: 20px 0; line-height: 1.6; color: #cccccc;">
+                Greetings, <strong>{}</strong>.
+              </p>
+              <p style="margin: 20px 0; line-height: 1.6; color: #cccccc;">
+                Access request received. To proceed with your induction into the KryptonSecAI network, validation of your communication channel is required.
+              </p>
+              
+              <!-- Button -->
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin: 30px 0; width: 100%;">
+                <tr>
+                  <td align="center">
+                    <a href="{}" target="_blank" style="display: inline-block; padding: 14px 28px; background-color: #00ff00; color: #000000; font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; text-decoration: none; border-radius: 4px; text-transform: uppercase; box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);">
+                      Verify Email Access
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              
+              <p style="margin: 20px 0; font-size: 12px; color: #666666;">
+                Or initialize manually via this link:<br>
+                <a href="{}" style="color: #00ff00; text-decoration: none; word-break: break-all;">{}</a>
+              </p>
+              
+              <p style="margin: 20px 0; line-height: 1.6; color: #cccccc; border-top: 1px solid #333333; padding-top: 20px;">
+                If this request was not initiated by you, terminate this message immediately. No further action is required.
+              </p>
+            </td>
+          </tr>
+          
+          <!-- Footer -->
+          <tr>
+            <td style="padding: 20px 40px; background-color: #050505; border-top: 1px solid #333333; border-radius: 0 0 8px 8px; text-align: center;">
+              <p style="margin: 0; font-size: 10px; color: #444444; font-family: Arial, sans-serif;">
+                SECURE TRANSMISSION // KRYPTON SEC AI<br>
+                &copy; 2025 Krypton Security. All rights reserved.
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"#, to_name, verify_link, verify_link, verify_link)
+        }))
+        .send()
+        .await?;
+
+    if !res.status().is_success() {
+        let error_text = res.text().await?;
+        println!("Failed to send email via Resend: {}", error_text);
+    } else {
+        println!("Verification email sent to {}", to_email);
+    }
+
     Ok(())
 }

@@ -1,5 +1,5 @@
 # Builder stage
-FROM rustlang/rust:nightly as builder
+FROM rustlang/rust:nightly AS builder
 
 WORKDIR /usr/src/app
 
@@ -9,7 +9,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install ONNX Runtime
-RUN curl -L -O https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz && \
+RUN curl -L --http1.1 --retry 3 --retry-delay 5 -O https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz && \
     tar -xzf onnxruntime-linux-x64-1.22.0.tgz && \
     mv onnxruntime-linux-x64-1.22.0/lib/libonnxruntime.so* /usr/lib/ && \
     rm -rf onnxruntime-linux-x64-1.22.0.tgz onnxruntime-linux-x64-1.22.0
@@ -47,7 +47,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Install ONNX Runtime
-RUN curl -L -O https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz && \
+RUN curl -L --http1.1 --retry 3 --retry-delay 5 -O https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz && \
     tar -xzf onnxruntime-linux-x64-1.22.0.tgz && \
     mv onnxruntime-linux-x64-1.22.0/lib/libonnxruntime.so* /usr/lib/ && \
     rm -rf onnxruntime-linux-x64-1.22.0.tgz onnxruntime-linux-x64-1.22.0

@@ -122,9 +122,25 @@ async fn main() -> std::io::Result<()> {
             .ok();
     }
 
+    // Initialize Redis (Optional)
+    let redis_url = std::env::var("REDIS_URL").ok();
+    let redis_client = if let Some(url) = redis_url {
+        println!("Initializing Redis Client at {}...", url);
+        match redis::Client::open(url) {
+            Ok(client) => Some(client),
+            Err(e) => {
+                eprintln!("Failed to open Redis client: {}", e);
+                None
+            }
+        }
+    } else {
+        println!("Redis URL not found. Caching disabled.");
+        None
+    };
+
     // Initialize RAG System (Load embedding model)
     println!("Initializing RAG System (Loading Embedding Model)...");
-    let rag = Arc::new(RagSystem::new(pool.clone()));
+    let rag = Arc::new(RagSystem::new(pool.clone(), redis_client));
     println!("RAG System Initialized.");
 
     // Seed Knowledge Base Documents

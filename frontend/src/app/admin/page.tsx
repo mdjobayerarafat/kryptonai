@@ -1,10 +1,59 @@
 "use client";
-import { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect, useCallback } from "react";
+import axios, { isAxiosError } from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Upload, CheckCircle, AlertCircle, Users, CreditCard, Shield, Trash2, Edit, Cpu, Plus, X } from "lucide-react";
+import { ArrowLeft, Upload, CheckCircle, AlertCircle, Users, CreditCard, Trash2, Edit, Cpu, Plus, X } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/api";
+
+interface Document {
+  id: string;
+  content: string;
+  metadata: string | Record<string, unknown>;
+  filename?: string;
+}
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  fullname?: string;
+  role: string;
+}
+
+interface Voucher {
+  id: string;
+  code: string;
+  max_uses: number;
+  used_count: number;
+  expires_at?: string;
+  is_active: boolean;
+}
+
+interface VoucherRequest {
+  id: string;
+  user_id: string;
+  status: string;
+  created_at: string;
+  username?: string;
+}
+
+interface AIModel {
+  id: string;
+  api_model_name: string;
+  display_name: string;
+  provider: string;
+  is_active: boolean;
+}
+
+interface ImportStatus {
+    total_documents: number;
+    processed_documents: number;
+    errors: number;
+    is_processing: boolean;
+    current_file: string;
+    message: string;
+}
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<"knowledge" | "users" | "vouchers" | "models">("knowledge");
@@ -16,22 +65,15 @@ export default function AdminPage() {
   const [kbStatus, setKbStatus] = useState<{ type: "success" | "error" | null; message: string }>({ type: null, message: "" });
   const [kbLoading, setKbLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [documents, setDocuments] = useState<any[]>([]);
-  const [editingDocument, setEditingDocument] = useState<any>(null);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [docPage, setDocPage] = useState(1);
-  const [docLimit, setDocLimit] = useState(20);
+  const [docLimit] = useState(20);
   const [docTotal, setDocTotal] = useState(0);
-  const [importStatus, setImportStatus] = useState<{
-      total_documents: number;
-      processed_documents: number;
-      errors: number;
-      is_processing: boolean;
-      current_file: string;
-      message: string;
-  } | null>(null);
+  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
 
   // User Management State
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
 
   // Voucher State
@@ -39,18 +81,17 @@ export default function AdminPage() {
   const [voucherMaxUses, setVoucherMaxUses] = useState(1);
   const [generatedVoucher, setGeneratedVoucher] = useState<{ code: string; message: string; max_uses: number } | null>(null);
   const [voucherError, setVoucherError] = useState("");
-  const [vouchersList, setVouchersList] = useState<any[]>([]);
+  const [vouchersList, setVouchersList] = useState<Voucher[]>([]);
   const [assignUserId, setAssignUserId] = useState<string>("");
   const [assignCode, setAssignCode] = useState<string>("");
   const [assignMsg, setAssignMsg] = useState<string>("");
-  const [voucherRequests, setVoucherRequests] = useState<any[]>([]);
+  const [voucherRequests, setVoucherRequests] = useState<VoucherRequest[]>([]);
   const [approveResult, setApproveResult] = useState<string>("");
-  const [requestCodes, setRequestCodes] = useState<Record<string, string>>({});
 
   // AI Models State
-  const [models, setModels] = useState<any[]>([]);
+  const [models, setModels] = useState<AIModel[]>([]);
   const [modelFormOpen, setModelFormOpen] = useState(false);
-  const [editingModel, setEditingModel] = useState<any>(null);
+  const [editingModel, setEditingModel] = useState<AIModel | null>(null);
   const [modelFormData, setModelFormData] = useState({
       api_model_name: "",
       display_name: "",
@@ -59,6 +100,71 @@ export default function AdminPage() {
   });
 
   const router = useRouter();
+
+  const fetchUsers = useCallback(async () => {
+    setUsersLoading(true);
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.get(`${getApiBaseUrl()}/api/admin/users`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setUsers(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  const fetchVouchers = useCallback(async () => {
+      const token = localStorage.getItem("token");
+      try {
+          const res = await axios.get(`${getApiBaseUrl()}/api/vouchers`, {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          setVouchersList(res.data);
+      } catch (err) {
+          console.error("Failed to fetch vouchers", err);
+      }
+  }, []);
+
+  const fetchVoucherRequests = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.get(`${getApiBaseUrl()}/api/admin/vouchers/requests`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setVoucherRequests(res.data);
+    } catch (err) {
+      console.error("Failed to fetch voucher requests", err);
+    }
+  }, []);
+
+  const fetchModels = useCallback(async () => {
+      const token = localStorage.getItem("token");
+      try {
+          const res = await axios.get(`${getApiBaseUrl()}/api/admin/models`, {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          setModels(res.data);
+      } catch (err) {
+          console.error("Failed to fetch models", err);
+      }
+  }, []);
+
+  const fetchDocuments = useCallback(async (page = docPage, limit = docLimit) => {
+      const token = localStorage.getItem("token");
+      try {
+          const res = await axios.get(`${getApiBaseUrl()}/api/admin/documents?page=${page}&limit=${limit}`, {
+              headers: { Authorization: `Bearer ${token}` }
+          });
+          setDocuments(res.data.documents);
+          setDocTotal(res.data.total);
+          setDocPage(page); // Update current page if successful
+      } catch (err) {
+          console.error("Failed to fetch documents", err);
+      }
+  }, [docLimit, docPage]);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -87,7 +193,7 @@ export default function AdminPage() {
           fetchDocuments();
       }
     }
-  }, [router, activeTab]);
+  }, [router, activeTab, fetchUsers, fetchVouchers, fetchVoucherRequests, fetchModels, fetchDocuments]);
 
   useEffect(() => {
       let interval: NodeJS.Timeout;
@@ -110,21 +216,7 @@ export default function AdminPage() {
           }, 1000);
       }
       return () => clearInterval(interval);
-  }, [kbLoading, importStatus?.is_processing]);
-
-  const fetchDocuments = async (page = docPage, limit = docLimit) => {
-      const token = localStorage.getItem("token");
-      try {
-          const res = await axios.get(`${getApiBaseUrl()}/api/admin/documents?page=${page}&limit=${limit}`, {
-              headers: { Authorization: `Bearer ${token}` }
-          });
-          setDocuments(res.data.documents);
-          setDocTotal(res.data.total);
-          setDocPage(page); // Update current page if successful
-      } catch (err) {
-          console.error("Failed to fetch documents", err);
-      }
-  };
+  }, [kbLoading, importStatus?.is_processing, fetchDocuments]);
 
   const handleDeleteDocument = async (id: string) => {
       if(!confirm("Are you sure?")) return;
@@ -134,7 +226,7 @@ export default function AdminPage() {
               headers: { Authorization: `Bearer ${token}` }
           });
           fetchDocuments();
-      } catch (err) {
+      } catch {
           alert("Failed to delete");
       }
   };
@@ -147,7 +239,7 @@ export default function AdminPage() {
           if (typeof metadata === 'string') {
              try {
                  metadata = JSON.parse(metadata);
-             } catch(e) {}
+             } catch {}
           }
 
           await axios.put(`${getApiBaseUrl()}/api/admin/documents/${editingDocument.id}`, {
@@ -158,20 +250,8 @@ export default function AdminPage() {
           });
           setEditingDocument(null);
           fetchDocuments();
-      } catch (err) {
+      } catch {
           alert("Failed to update");
-      }
-  };
-
-  const fetchModels = async () => {
-      const token = localStorage.getItem("token");
-      try {
-          const res = await axios.get(`${getApiBaseUrl()}/api/admin/models`, {
-              headers: { Authorization: `Bearer ${token}` }
-          });
-          setModels(res.data);
-      } catch (err) {
-          console.error("Failed to fetch models", err);
       }
   };
 
@@ -211,7 +291,7 @@ export default function AdminPage() {
       }
   };
 
-  const openModelForm = (model: any = null) => {
+  const openModelForm = (model: AIModel | null = null) => {
       if (model) {
           setEditingModel(model);
           setModelFormData({
@@ -225,34 +305,6 @@ export default function AdminPage() {
           setModelFormData({ api_model_name: "", display_name: "", provider: "openrouter", is_active: true });
       }
       setModelFormOpen(true);
-  };
-
-
-  const fetchUsers = async () => {
-    setUsersLoading(true);
-    const token = localStorage.getItem("token");
-    try {
-      const res = await axios.get(`${getApiBaseUrl()}/api/admin/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setUsers(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setUsersLoading(false);
-    }
-  };
-
-  const fetchVouchers = async () => {
-      const token = localStorage.getItem("token");
-      try {
-          const res = await axios.get(`${getApiBaseUrl()}/api/vouchers`, {
-              headers: { Authorization: `Bearer ${token}` }
-          });
-          setVouchersList(res.data);
-      } catch (err) {
-          console.error("Failed to fetch vouchers", err);
-      }
   };
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
@@ -279,8 +331,12 @@ export default function AdminPage() {
       );
       setGeneratedVoucher(res.data);
       fetchVouchers(); // Refresh list
-    } catch (err: any) {
-      setVoucherError(err.response?.data?.error || "Failed to generate voucher");
+    } catch (err) {
+        if (isAxiosError(err)) {
+            setVoucherError(err.response?.data?.error || "Failed to generate voucher");
+        } else {
+            setVoucherError("Failed to generate voucher");
+        }
     }
   };
 
@@ -299,23 +355,15 @@ export default function AdminPage() {
       );
       setAssignMsg(res.data.message || "Voucher assigned");
       setAssignCode("");
-    } catch (err: any) {
-      setVoucherError(err.response?.data?.error || "Failed to assign voucher");
+    } catch (err) {
+        if (isAxiosError(err)) {
+            setVoucherError(err.response?.data?.error || "Failed to assign voucher");
+        } else {
+            setVoucherError("Failed to assign voucher");
+        }
     }
   };
   
-  const fetchVoucherRequests = async () => {
-    const token = localStorage.getItem("token");
-    try {
-      const res = await axios.get(`${getApiBaseUrl()}/api/admin/vouchers/requests`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setVoucherRequests(res.data);
-    } catch (err) {
-      console.error("Failed to fetch voucher requests", err);
-    }
-  };
-
   const handleApproveRequest = async (id: string, code: string) => {
     setApproveResult("");
     setVoucherError("");
@@ -330,8 +378,12 @@ export default function AdminPage() {
       setApproveResult(res.data.message || "Approved");
       fetchVoucherRequests();
       fetchVouchers();
-    } catch (err: any) {
-      setVoucherError(err.response?.data?.error || "Approval failed");
+    } catch (err) {
+        if (isAxiosError(err)) {
+            setVoucherError(err.response?.data?.error || "Approval failed");
+        } else {
+            setVoucherError("Approval failed");
+        }
     }
   };
 
@@ -386,29 +438,28 @@ export default function AdminPage() {
         setKbStatus({ type: "success", message: response.data.message });
         setJsonInput("");
         setSelectedFile(null);
-        // Don't clear progress yet, let polling take over UI
-        // setUploadProgress(0); 
-        // fetchDocuments(); // Polling will fetch when done
-    } catch (error: any) {
+    } catch (error) {
         console.error("Upload error:", error);
-        setKbStatus({ type: "error", message: error.response?.data?.error || "Failed to upload data." });
+        if (isAxiosError(error)) {
+            setKbStatus({ type: "error", message: error.response?.data?.error || "Failed to upload data." });
+        } else {
+            setKbStatus({ type: "error", message: "Failed to upload data." });
+        }
         setKbLoading(false); // Only stop loading on error
     } 
   };
 
   return (
     <div className="min-h-screen bg-black text-gray-300 font-sans p-8 animate-fade-in relative overflow-hidden">
-      {/* Ambient Background Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-green-500/10 blur-[120px] rounded-full pointer-events-none z-0" />
       
       <div className="max-w-6xl mx-auto space-y-8 relative z-10">
-        <Link href="/chat" className="inline-flex items-center text-green-500 hover:text-green-400 mb-4 transition-colors">
+        <Link href="/chat" className="inline-flex items-center text-gray-500 hover:text-white mb-4 transition-colors">
           <ArrowLeft size={20} className="mr-2" />
           Back to Chat
         </Link>
 
         <h1 className="text-4xl font-bold text-white mb-6 tracking-tight animate-slide-up">
-            Admin <span className="text-green-500">Dashboard</span>
+            Admin <span className="text-gray-500">Dashboard</span>
         </h1>
 
         <div className="flex gap-4 border-b border-white/10 mb-8 overflow-x-auto pb-1 animate-slide-up delay-100">
@@ -416,7 +467,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab("knowledge")}
             className={`pb-3 px-6 text-sm font-medium transition-all duration-300 ${
                 activeTab === "knowledge" 
-                ? "border-b-2 border-green-500 text-green-500" 
+                ? "border-b-2 border-white text-white" 
                 : "text-gray-500 hover:text-white"
             }`}
           >
@@ -428,7 +479,7 @@ export default function AdminPage() {
                 onClick={() => setActiveTab("users")}
                 className={`pb-3 px-6 text-sm font-medium transition-all duration-300 ${
                   activeTab === "users" 
-                  ? "border-b-2 border-green-500 text-green-500" 
+                  ? "border-b-2 border-white text-white" 
                   : "text-gray-500 hover:text-white"
               }`}
               >
@@ -439,7 +490,7 @@ export default function AdminPage() {
                 onClick={() => setActiveTab("vouchers")}
                 className={`pb-3 px-6 text-sm font-medium transition-all duration-300 ${
                     activeTab === "vouchers" 
-                    ? "border-b-2 border-green-500 text-green-500" 
+                    ? "border-b-2 border-white text-white" 
                     : "text-gray-500 hover:text-white"
                 }`}
               >
@@ -450,7 +501,7 @@ export default function AdminPage() {
                 onClick={() => setActiveTab("models")}
                 className={`pb-3 px-6 text-sm font-medium transition-all duration-300 ${
                     activeTab === "models" 
-                    ? "border-b-2 border-green-500 text-green-500" 
+                    ? "border-b-2 border-white text-white" 
                     : "text-gray-500 hover:text-white"
                 }`}
               >
@@ -463,10 +514,10 @@ export default function AdminPage() {
         <div className="animate-slide-up delay-200">
             {activeTab === "knowledge" && (
             <div className="space-y-8">
-                <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 shadow-2xl">
+                <div className="bg-black border border-white/10 rounded-2xl p-8">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-2xl font-bold text-white">Upload Knowledge Base</h2>
-                        <div className="bg-green-500/10 px-3 py-1 rounded-full border border-green-500/20 text-green-500 text-xs font-mono">
+                        <div className="bg-white/10 px-3 py-1 rounded-full border border-white/20 text-white text-xs font-mono">
                             RAG SYSTEM READY
                         </div>
                     </div>
@@ -474,13 +525,13 @@ export default function AdminPage() {
                     Paste a JSON array of documents to index into the vector database.
                     <br />
                     <span className="text-xs mt-2 block opacity-70">
-                        Expected format: <code className="bg-white/10 px-1.5 py-0.5 rounded text-green-400 font-mono">[{`{ "content": "...", "metadata": {...} }`}]</code>
+                        Expected format: <code className="bg-white/10 px-1.5 py-0.5 rounded text-gray-300 font-mono">[{`{ "content": "...", "metadata": {...} }`}]</code>
                     </span>
                     </p>
 
                     <div className="flex items-center gap-4 mb-4">
                         <label className="flex items-center gap-2 cursor-pointer bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition-colors group">
-                            <Upload size={16} className="text-green-500 group-hover:scale-110 transition-transform" />
+                            <Upload size={16} className="text-white group-hover:scale-110 transition-transform" />
                             <span className="text-sm font-medium text-gray-300 group-hover:text-white">Import JSON File</span>
                             <input 
                                 type="file" 
@@ -493,17 +544,16 @@ export default function AdminPage() {
                     </div>
 
                     <div className="relative group">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-blue-500 rounded-xl opacity-20 group-hover:opacity-40 transition duration-500 blur"></div>
                         <textarea
                             value={jsonInput}
                             onChange={(e) => setJsonInput(e.target.value)}
                             placeholder={`[\n  {\n    "content": "SQL Injection is a code injection technique...",\n    "metadata": { "category": "web", "difficulty": "easy" }\n  }\n]`}
-                            className="relative w-full h-96 bg-black border border-white/10 rounded-xl p-6 font-mono text-sm text-gray-300 focus:outline-none focus:border-green-500/50 transition-colors mb-6 resize-none"
+                            className="relative w-full h-96 bg-black border border-white/10 rounded-xl p-6 font-mono text-sm text-gray-300 focus:outline-none focus:border-white transition-colors mb-6 resize-none"
                         />
                     </div>
 
                     {kbStatus.message && (
-                        <div className={`p-4 rounded-lg mb-6 flex items-center gap-3 ${kbStatus.type === 'success' ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                        <div className={`p-4 rounded-lg mb-6 flex items-center gap-3 ${kbStatus.type === 'success' ? 'bg-white/10 text-white border border-white/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
                             {kbStatus.type === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
                             {kbStatus.message}
                         </div>
@@ -522,7 +572,7 @@ export default function AdminPage() {
                             </div>
                             <div className="w-full bg-white/10 rounded-full h-2">
                                 <div 
-                                    className="bg-green-500 h-2 rounded-full transition-all duration-300 ease-out relative overflow-hidden" 
+                                    className="bg-white h-2 rounded-full transition-all duration-300 ease-out relative overflow-hidden" 
                                     style={{ width: importStatus?.is_processing ? '100%' : `${uploadProgress}%` }}
                                 >
                                     <div className="absolute inset-0 bg-white/20 animate-[shimmer_2s_infinite]"></div>
@@ -535,14 +585,14 @@ export default function AdminPage() {
                         <button 
                             onClick={handleUpload} 
                             disabled={kbLoading}
-                            className="bg-green-600 hover:bg-green-500 text-black font-bold px-8 py-3 rounded-xl transition-all hover:scale-[1.02] shadow-[0_0_20px_rgba(22,163,74,0.3)] disabled:opacity-50 disabled:transform-none disabled:shadow-none"
+                            className="bg-white hover:bg-gray-200 text-black font-bold px-8 py-3 rounded-xl transition-all hover:scale-[1.02] disabled:opacity-50 disabled:transform-none"
                         >
                             {kbLoading ? "Uploading..." : "Upload Data"}
                         </button>
                     </div>
                 </div>
 
-                <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 shadow-2xl">
+                <div className="bg-black border border-white/10 rounded-2xl p-8">
                     <div className="flex items-center justify-between mb-6">
                         <h2 className="text-2xl font-bold text-white">Existing Knowledge ({docTotal})</h2>
                         <div className="flex gap-2 items-center">
@@ -571,13 +621,13 @@ export default function AdminPage() {
                                         <textarea
                                             value={editingDocument.content}
                                             onChange={(e) => setEditingDocument({...editingDocument, content: e.target.value})}
-                                            className="w-full bg-black border border-white/20 rounded-lg p-3 text-sm text-gray-300 font-mono focus:border-green-500 outline-none"
+                                            className="w-full bg-black border border-white/20 rounded-lg p-3 text-sm text-gray-300 font-mono focus:border-white outline-none"
                                             rows={5}
                                         />
                                         <input
                                             value={typeof editingDocument.metadata === 'string' ? editingDocument.metadata : JSON.stringify(editingDocument.metadata)}
                                             onChange={(e) => setEditingDocument({...editingDocument, metadata: e.target.value})}
-                                            className="w-full bg-black border border-white/20 rounded-lg p-3 text-sm text-gray-300 font-mono focus:border-green-500 outline-none"
+                                            className="w-full bg-black border border-white/20 rounded-lg p-3 text-sm text-gray-300 font-mono focus:border-white outline-none"
                                             placeholder="Metadata JSON"
                                         />
                                         <div className="flex justify-end gap-2">
@@ -589,7 +639,7 @@ export default function AdminPage() {
                                             </button>
                                             <button 
                                                 onClick={handleUpdateDocument}
-                                                className="px-4 py-2 rounded-lg bg-green-600 text-black font-bold hover:bg-green-500 transition-colors"
+                                                className="px-4 py-2 rounded-lg bg-white text-black font-bold hover:bg-gray-200 transition-colors"
                                             >
                                                 Save Changes
                                             </button>
@@ -598,11 +648,11 @@ export default function AdminPage() {
                                 ) : (
                                     <div>
                                         <div className="flex justify-between items-start mb-2">
-                                            <div className="font-mono text-xs text-green-500/70 mb-1">{doc.id}</div>
+                                            <div className="font-mono text-xs text-gray-500 mb-1">{doc.id}</div>
                                             <div className="flex gap-2">
                                                 <button 
                                                     onClick={() => setEditingDocument(doc)}
-                                                    className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-blue-400 transition-colors"
+                                                    className="p-1.5 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
                                                     title="Edit"
                                                 >
                                                     <Edit size={16} />
@@ -637,7 +687,7 @@ export default function AdminPage() {
             )}
 
             {activeTab === "users" && role === "admin" && (
-                <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 shadow-2xl">
+                <div className="bg-black border border-white/10 rounded-2xl p-8">
                     <h2 className="text-2xl font-bold text-white mb-6">Manage Users</h2>
                     {usersLoading ? (
                         <div className="text-center py-12 text-gray-500 animate-pulse">Loading users...</div>
@@ -656,16 +706,16 @@ export default function AdminPage() {
                                 <tbody className="divide-y divide-white/5">
                                     {users.map(u => (
                                         <tr key={u.id} className="hover:bg-white/5 transition-colors">
-                                            <td className="p-4 font-mono text-green-400">{u.username}</td>
+                                            <td className="p-4 font-mono text-white">{u.username}</td>
                                             <td className="p-4 text-gray-300">{u.fullname || "-"}</td>
                                             <td className="p-4 text-gray-500">{u.email || "-"}</td>
                                             <td className="p-4">
                                                 <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
                                                     u.role === 'admin' 
-                                                    ? 'bg-red-500/10 text-red-400 border-red-500/20' 
+                                                    ? 'bg-white text-black border-white' 
                                                     : u.role === 'editor' 
-                                                    ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' 
-                                                    : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                                                    ? 'bg-gray-800 text-gray-300 border-gray-700' 
+                                                    : 'bg-black text-gray-500 border-gray-800'
                                                 }`}>
                                                     {u.role}
                                                 </span>
@@ -674,7 +724,7 @@ export default function AdminPage() {
                                                 <select 
                                                     value={u.role}
                                                     onChange={(e) => handleUpdateRole(u.id, e.target.value)}
-                                                    className="bg-black border border-white/20 rounded-lg px-3 py-1.5 text-sm text-gray-300 focus:border-green-500 outline-none cursor-pointer hover:border-white/40 transition-colors"
+                                                    className="bg-black border border-white/20 rounded-lg px-3 py-1.5 text-sm text-gray-300 focus:border-white outline-none cursor-pointer hover:border-white/40 transition-colors"
                                                 >
                                                     <option value="user">User</option>
                                                     <option value="editor">Editor</option>
@@ -701,7 +751,7 @@ export default function AdminPage() {
                                 type="number" 
                                 value={voucherDuration}
                                 onChange={(e) => setVoucherDuration(Number(e.target.value))}
-                                className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all"
+                                className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-white focus:ring-1 focus:ring-white outline-none transition-all"
                                 min="1"
                             />
                         </div>
@@ -711,13 +761,13 @@ export default function AdminPage() {
                                 type="number" 
                                 value={voucherMaxUses}
                                 onChange={(e) => setVoucherMaxUses(Number(e.target.value))}
-                                className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all"
+                                className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-white focus:ring-1 focus:ring-white outline-none transition-all"
                                 min="1"
                             />
                         </div>
                         <button 
                             onClick={handleGenerateVoucher}
-                            className="bg-yellow-500 hover:bg-yellow-400 text-black font-bold px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(234,179,8,0.3)] hover:scale-[1.02]"
+                            className="bg-white hover:bg-gray-200 text-black font-bold px-6 py-3 rounded-xl transition-all hover:scale-[1.02]"
                         >
                             Generate Code
                         </button>
@@ -725,17 +775,17 @@ export default function AdminPage() {
 
                     <div className="mt-12">
                         <h3 className="text-xl font-bold mb-4 text-white flex items-center gap-2">
-                            <Users size={20} className="text-green-500" />
+                            <Users size={20} className="text-white" />
                             Assign Voucher To User
                         </h3>
                         {assignMsg && (
-                          <div className="bg-green-500/10 text-green-400 border border-green-500/20 p-4 rounded-xl mb-6 flex items-center gap-3">
+                          <div className="bg-white/10 text-white border border-white/20 p-4 rounded-xl mb-6 flex items-center gap-3">
                             <CheckCircle size={18} />
                             {assignMsg}
                           </div>
                         )}
                         {voucherError && (
-                          <div className="bg-red-500/10 text-red-400 border border-red-500/20 p-4 rounded-xl mb-6 flex items-center gap-3">
+                          <div className="bg-white/5 text-gray-300 border border-white/10 p-4 rounded-xl mb-6 flex items-center gap-3">
                             <AlertCircle size={18} />
                             {voucherError}
                           </div>
@@ -746,7 +796,7 @@ export default function AdminPage() {
                                 <select 
                                     value={assignUserId}
                                     onChange={(e) => setAssignUserId(e.target.value)}
-                                    className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all"
+                                    className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-white focus:ring-1 focus:ring-white outline-none transition-all"
                                 >
                                     <option value="">Choose a user</option>
                                     {users.map(u => (
@@ -760,13 +810,13 @@ export default function AdminPage() {
                                     type="text" 
                                     value={assignCode}
                                     onChange={(e) => setAssignCode(e.target.value)}
-                                    className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-green-500 focus:ring-1 focus:ring-green-500 outline-none transition-all font-mono"
+                                    className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-white focus:ring-1 focus:ring-white outline-none transition-all font-mono"
                                     placeholder="CODE"
                                 />
                             </div>
                             <button 
                                 onClick={handleAssignVoucher}
-                                className="bg-green-600 hover:bg-green-500 text-black font-bold px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(22,163,74,0.3)] hover:scale-[1.02]"
+                                className="bg-white hover:bg-gray-200 text-black font-bold px-6 py-3 rounded-xl transition-all hover:scale-[1.02]"
                             >
                                 Assign Voucher
                             </button>
@@ -774,10 +824,10 @@ export default function AdminPage() {
                     </div>
 
                     {generatedVoucher && (
-                        <div className="bg-green-500/10 border border-green-500/20 p-8 rounded-xl text-center mb-8 animate-fade-in relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-24 h-24 bg-green-500/20 blur-[50px] rounded-full"></div>
-                            <p className="text-green-400 mb-4 font-medium uppercase tracking-widest text-sm">Voucher Generated</p>
-                            <div className="text-5xl md:text-6xl font-mono font-bold text-white tracking-widest my-6 drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]">
+                        <div className="bg-white/10 border border-white/20 p-8 rounded-xl text-center mb-8 animate-fade-in relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 blur-[50px] rounded-full"></div>
+                            <p className="text-gray-300 mb-4 font-medium uppercase tracking-widest text-sm">Voucher Generated</p>
+                            <div className="text-5xl md:text-6xl font-mono font-bold text-white tracking-widest my-6 drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
                                 {generatedVoucher.code}
                             </div>
                             <div className="flex justify-center gap-6 text-sm text-gray-400">
@@ -788,7 +838,7 @@ export default function AdminPage() {
                     )}
                     
                     {voucherError && (
-                        <div className="bg-red-500/10 text-red-400 border border-red-500/20 p-4 rounded-xl mb-8 flex items-center gap-3">
+                        <div className="bg-white/5 text-gray-300 border border-white/10 p-4 rounded-xl mb-8 flex items-center gap-3">
                             <AlertCircle size={20} />
                             {voucherError}
                         </div>
@@ -796,145 +846,83 @@ export default function AdminPage() {
 
                     <div className="mt-12">
                         <h3 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
-                            <CreditCard size={20} className="text-green-500" />
+                            <CreditCard size={20} className="text-white" />
                             Active Vouchers
                         </h3>
-                        <div className="overflow-x-auto rounded-xl border border-white/5">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-white/5">
-                                    <tr className="text-gray-400 text-sm uppercase tracking-wider">
-                                        <th className="p-4">Code</th>
-                                        <th className="p-4">Duration</th>
-                                        <th className="p-4">Usage</th>
-                                        <th className="p-4">Created By</th>
-                                        <th className="p-4">Created At</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {vouchersList.map((v) => (
-                                        <tr key={v.id} className="hover:bg-white/5 transition-colors">
-                                            <td className="p-4 font-mono text-green-400 font-bold tracking-wider">{v.code}</td>
-                                            <td className="p-4 text-gray-300">{v.duration_days} Days</td>
-                                            <td className="p-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-24 bg-white/10 rounded-full h-2">
-                                                        <div 
-                                                            className={`h-2 rounded-full transition-all duration-500 ${v.current_uses >= v.max_uses ? 'bg-red-500' : 'bg-green-500'}`} 
-                                                            style={{ width: `${Math.min(100, (v.current_uses / v.max_uses) * 100)}%` }}
-                                                        ></div>
-                                                    </div>
-                                                    <span className={`text-xs ${v.current_uses >= v.max_uses ? 'text-red-400' : 'text-gray-400'}`}>
-                                                        {v.current_uses}/{v.max_uses}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="p-4 text-gray-500">{v.created_by}</td>
-                                            <td className="p-4 text-gray-600 text-sm">{new Date(v.created_at).toLocaleDateString()}</td>
-                                        </tr>
-                                    ))}
-                                    {vouchersList.length === 0 && (
-                                        <tr>
-                                            <td colSpan={5} className="p-8 text-center text-gray-600">No vouchers active. Generate one above.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                        <div className="grid gap-4">
+                            {vouchersList.map(v => (
+                                <div key={v.id} className="bg-white/5 border border-white/10 p-4 rounded-xl flex justify-between items-center">
+                                    <div>
+                                        <div className="font-mono text-white font-bold">{v.code}</div>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                            Max Uses: {v.max_uses} | Used: {v.used_count} | Expires: {v.expires_at ? new Date(v.expires_at).toLocaleDateString() : "Never"}
+                                        </div>
+                                    </div>
+                                    <div className={`px-2 py-1 rounded text-xs border ${v.is_active ? "bg-white text-black border-white" : "bg-black text-gray-500 border-gray-800"}`}>
+                                        {v.is_active ? "Active" : "Inactive"}
+                                    </div>
+                                </div>
+                            ))}
+                            {vouchersList.length === 0 && (
+                                <div className="text-gray-500 text-center py-4">No active vouchers</div>
+                            )}
                         </div>
                     </div>
 
                     <div className="mt-12">
                         <h3 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
-                            <CreditCard size={20} className="text-green-500" />
-                            Voucher Requests
+                             <Users size={20} className="text-white" />
+                             Voucher Requests
                         </h3>
-                        {approveResult && (
-                          <div className="bg-green-500/10 text-green-400 border border-green-500/20 p-4 rounded-xl mb-6 flex items-center gap-3">
-                            <CheckCircle size={18} />
-                            {approveResult}
-                          </div>
-                        )}
-                        {voucherError && (
-                          <div className="bg-red-500/10 text-red-400 border border-red-500/20 p-4 rounded-xl mb-6 flex items-center gap-3">
-                            <AlertCircle size={18} />
-                            {voucherError}
-                          </div>
-                        )}
-                        <div className="overflow-x-auto rounded-xl border border-white/5">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-white/5">
-                                    <tr className="text-gray-400 text-sm uppercase tracking-wider">
-                                        <th className="p-4">User</th>
-                                        <th className="p-4">Message</th>
-                                        <th className="p-4">Status</th>
-                                        <th className="p-4">Requested</th>
-                                        <th className="p-4">Approve</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-white/5">
-                                    {voucherRequests.map((r) => (
-                                      <tr key={r.id} className="hover:bg-white/5 transition-colors">
-                                        <td className="p-4 text-gray-300">
-                                          {users.find(u => u.id === r.user_id)?.username || r.user_id}
-                                        </td>
-                                        <td className="p-4 text-gray-400">
-                                          {r.message || "-"}
-                                        </td>
-                                        <td className="p-4">
-                                          <span className={`px-2.5 py-1 rounded-full text-xs font-medium border ${
-                                            r.status === 'pending' 
-                                            ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' 
-                                            : r.status === 'approved'
-                                            ? 'bg-green-500/10 text-green-400 border-green-500/20'
-                                            : 'bg-red-500/10 text-red-400 border-red-500/20'
-                                          }`}>
-                                            {r.status}
-                                          </span>
-                                        </td>
-                                        <td className="p-4 text-gray-600 text-sm">{new Date(r.created_at).toLocaleString()}</td>
-                                        <td className="p-4">
-                                          {r.status === 'pending' ? (
-                                            <div className="flex items-center gap-2">
-                                              <input 
-                                                type="text" 
-                                                placeholder="CODE"
-                                                value={requestCodes[r.id] || ""}
-                                                onChange={(e) => setRequestCodes((prev) => ({ ...prev, [r.id]: e.target.value }))}
-                                                className="bg-black border border-white/20 rounded-lg px-3 py-1.5 text-sm text-gray-300 focus:border-green-500 outline-none font-mono"
-                                              />
-                                              <button 
-                                                onClick={() => handleApproveRequest(r.id, requestCodes[r.id] || "")}
-                                                className="px-3 py-1.5 rounded-lg bg-green-600 text-black text-sm font-bold hover:bg-green-500 transition-colors"
-                                              >
-                                                Approve
-                                              </button>
-                                            </div>
-                                          ) : (
-                                            <span className="text-gray-500 text-sm">Processed</span>
-                                          )}
-                                        </td>
-                                      </tr>
-                                    ))}
-                                    {voucherRequests.length === 0 && (
-                                      <tr>
-                                        <td colSpan={5} className="p-8 text-center text-gray-600">No voucher requests.</td>
-                                      </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                        <div className="grid gap-4">
+                             {voucherRequests.map(req => (
+                                 <div key={req.id} className="bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
+                                     <div>
+                                         <div className="font-bold text-white">{req.username || "Unknown User"}</div>
+                                         <div className="text-xs text-gray-500">Requested: {new Date(req.created_at).toLocaleDateString()}</div>
+                                         <div className={`text-xs mt-1 ${req.status === 'pending' ? 'text-white' : req.status === 'approved' ? 'text-gray-400' : 'text-gray-600'}`}>
+                                             Status: {req.status}
+                                         </div>
+                                     </div>
+                                     {req.status === 'pending' && (
+                                         <div className="flex gap-2 w-full md:w-auto">
+                                             <input 
+                                                 type="text" 
+                                                 placeholder="Voucher Code"
+                                                 className="bg-black border border-white/20 rounded px-3 py-1 text-sm text-white focus:border-white outline-none w-full md:w-32"
+                                                 id={`code-${req.id}`}
+                                             />
+                                             <button 
+                                                 onClick={() => {
+                                                     const input = document.getElementById(`code-${req.id}`) as HTMLInputElement;
+                                                     handleApproveRequest(req.id, input.value);
+                                                 }}
+                                                 className="bg-white hover:bg-gray-200 text-black text-sm font-bold px-3 py-1 rounded transition-colors"
+                                             >
+                                                 Approve
+                                             </button>
+                                         </div>
+                                     )}
+                                     {approveResult && req.status === 'pending' && (
+                                         <div className="text-xs text-gray-300">{approveResult}</div>
+                                     )}
+                                 </div>
+                             ))}
+                             {voucherRequests.length === 0 && (
+                                 <div className="text-gray-500 text-center py-4">No pending requests</div>
+                             )}
                         </div>
                     </div>
                 </div>
             )}
+
             {activeTab === "models" && (
                 <div className="bg-[#0a0a0a] border border-white/10 rounded-2xl p-8 shadow-2xl">
                     <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h2 className="text-2xl font-bold text-white mb-2">AI Models Management</h2>
-                            <p className="text-gray-400">Configure available AI models for chat.</p>
-                        </div>
+                        <h2 className="text-2xl font-bold text-white">AI Models Management</h2>
                         <button 
                             onClick={() => openModelForm()}
-                            className="bg-green-600 hover:bg-green-500 text-black font-bold px-6 py-3 rounded-xl transition-all hover:scale-[1.02] shadow-[0_0_20px_rgba(22,163,74,0.3)] flex items-center gap-2"
+                            className="bg-white hover:bg-gray-200 text-black font-bold px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                         >
                             <Plus size={18} /> Add Model
                         </button>
@@ -942,60 +930,62 @@ export default function AdminPage() {
 
                     {modelFormOpen && (
                         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                            <div className="bg-[#111] border border-white/10 rounded-2xl w-full max-w-lg p-8 shadow-2xl animate-scale-in relative">
+                            <div className="bg-[#111] border border-white/10 rounded-2xl p-8 max-w-md w-full relative animate-scale-in">
                                 <button 
                                     onClick={() => setModelFormOpen(false)}
-                                    className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+                                    className="absolute top-4 right-4 text-gray-400 hover:text-white"
                                 >
-                                    <X size={20} />
+                                    <X size={24} />
                                 </button>
                                 <h3 className="text-xl font-bold text-white mb-6">
                                     {editingModel ? "Edit Model" : "Add New Model"}
                                 </h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">API Model Name</label>
+                                        <label className="block text-sm text-gray-400 mb-1">API Model Name (ID)</label>
                                         <input 
-                                            type="text" 
                                             value={modelFormData.api_model_name}
                                             onChange={(e) => setModelFormData({...modelFormData, api_model_name: e.target.value})}
-                                            placeholder="e.g. openai/gpt-4"
-                                            className="w-full bg-black border border-white/10 rounded-lg p-3 text-white focus:border-green-500 focus:outline-none transition-colors"
+                                            className="w-full bg-black border border-white/20 rounded-lg p-3 text-white focus:border-white outline-none"
+                                            placeholder="e.g. google/gemini-pro"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">Display Name</label>
+                                        <label className="block text-sm text-gray-400 mb-1">Display Name</label>
                                         <input 
-                                            type="text" 
                                             value={modelFormData.display_name}
                                             onChange={(e) => setModelFormData({...modelFormData, display_name: e.target.value})}
-                                            placeholder="e.g. GPT-4 Turbo"
-                                            className="w-full bg-black border border-white/10 rounded-lg p-3 text-white focus:border-green-500 focus:outline-none transition-colors"
+                                            className="w-full bg-black border border-white/20 rounded-lg p-3 text-white focus:border-white outline-none"
+                                            placeholder="e.g. Gemini Pro"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-400 mb-1">Provider</label>
-                                        <input 
-                                            type="text" 
+                                        <label className="block text-sm text-gray-400 mb-1">Provider</label>
+                                        <select 
                                             value={modelFormData.provider}
                                             onChange={(e) => setModelFormData({...modelFormData, provider: e.target.value})}
-                                            placeholder="openrouter"
-                                            className="w-full bg-black border border-white/10 rounded-lg p-3 text-white focus:border-green-500 focus:outline-none transition-colors"
-                                        />
+                                            className="w-full bg-black border border-white/20 rounded-lg p-3 text-white focus:border-white outline-none"
+                                        >
+                                            <option value="openrouter">OpenRouter</option>
+                                            <option value="openai">OpenAI</option>
+                                            <option value="anthropic">Anthropic</option>
+                                            <option value="google">Google</option>
+                                            <option value="local">Local (Ollama)</option>
+                                        </select>
                                     </div>
-                                    <div className="flex items-center gap-3 py-2">
+                                    <div className="flex items-center gap-2">
                                         <input 
-                                            type="checkbox" 
-                                            id="is_active"
+                                            type="checkbox"
                                             checked={modelFormData.is_active}
                                             onChange={(e) => setModelFormData({...modelFormData, is_active: e.target.checked})}
-                                            className="w-5 h-5 rounded border-gray-600 text-green-500 focus:ring-green-500 bg-black"
+                                            className="w-4 h-4 rounded border-gray-600 text-white focus:ring-white bg-gray-700"
+                                            id="is_active"
                                         />
-                                        <label htmlFor="is_active" className="text-gray-300">Active</label>
+                                        <label htmlFor="is_active" className="text-sm text-gray-300">Active</label>
                                     </div>
                                     <button 
                                         onClick={handleSaveModel}
-                                        className="w-full bg-green-600 hover:bg-green-500 text-black font-bold py-3 rounded-lg transition-all mt-4"
+                                        className="w-full bg-white hover:bg-gray-200 text-black font-bold py-3 rounded-lg mt-4 transition-colors"
                                     >
                                         Save Model
                                     </button>
@@ -1004,53 +994,40 @@ export default function AdminPage() {
                         </div>
                     )}
 
-                    <div className="overflow-x-auto rounded-xl border border-white/5">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="bg-white/5">
-                                <tr className="text-gray-400 text-sm uppercase tracking-wider">
-                                    <th className="p-4">Display Name</th>
-                                    <th className="p-4">API Name</th>
-                                    <th className="p-4">Provider</th>
-                                    <th className="p-4">Status</th>
-                                    <th className="p-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-white/5">
-                                {models.map((m) => (
-                                    <tr key={m.id} className="hover:bg-white/5 transition-colors group">
-                                        <td className="p-4 font-bold text-white">{m.display_name}</td>
-                                        <td className="p-4 font-mono text-sm text-gray-400">{m.api_model_name}</td>
-                                        <td className="p-4 text-gray-400">{m.provider}</td>
-                                        <td className="p-4">
-                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${m.is_active ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
-                                                {m.is_active ? 'Active' : 'Inactive'}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button 
-                                                    onClick={() => openModelForm(m)}
-                                                    className="p-2 hover:bg-white/10 rounded-lg text-blue-400 hover:text-blue-300 transition-colors"
-                                                >
-                                                    <Edit size={16} />
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleDeleteModel(m.id)}
-                                                    className="p-2 hover:bg-white/10 rounded-lg text-red-400 hover:text-red-300 transition-colors"
-                                                >
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {models.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="p-8 text-center text-gray-600">No models found. Add one above.</td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                    <div className="grid gap-4">
+                        {models.map(model => (
+                            <div key={model.id} className="bg-white/5 border border-white/10 p-6 rounded-xl flex justify-between items-center group hover:border-white/30 transition-colors">
+                                <div>
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <h3 className="font-bold text-white text-lg">{model.display_name}</h3>
+                                        <span className={`px-2 py-0.5 rounded text-xs border ${model.is_active ? 'bg-white text-black border-white' : 'bg-black text-gray-500 border-gray-800'}`}>
+                                            {model.is_active ? "Active" : "Inactive"}
+                                        </span>
+                                    </div>
+                                    <div className="text-sm text-gray-500 font-mono">{model.api_model_name}</div>
+                                    <div className="text-xs text-gray-600 mt-1 uppercase tracking-wider">{model.provider}</div>
+                                </div>
+                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button 
+                                        onClick={() => openModelForm(model)}
+                                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-white transition-colors"
+                                    >
+                                        <Edit size={18} />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleDeleteModel(model.id)}
+                                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-400 transition-colors"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                        {models.length === 0 && (
+                            <div className="text-center py-12 text-gray-500 bg-white/5 rounded-xl border border-white/10 border-dashed">
+                                No models configured. Add one to get started.
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

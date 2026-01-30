@@ -75,8 +75,12 @@ export default function ProfilePage() {
       });
       setProfile(profileRes.data);
       setVoucherCode("");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Redemption failed");
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.error || "Redemption failed");
+      } else {
+        setError("Redemption failed");
+      }
     }
   };
 
@@ -93,8 +97,12 @@ export default function ProfilePage() {
       );
       setApplyMsg(res.data.message || "Voucher request submitted");
       setApplyMessage("");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Request failed");
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.error || "Request failed");
+      } else {
+        setError("Request failed");
+      }
     }
   };
 
@@ -114,8 +122,12 @@ export default function ProfilePage() {
         setProfile(profileRes.data);
       }
       setVerifyToken("");
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Verification failed");
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.error || "Verification failed");
+      } else {
+        setError("Verification failed");
+      }
     }
   };
 
@@ -315,7 +327,7 @@ export default function ProfilePage() {
                         <CreditCard size={24} className="text-green-500" /> 
                         Apply for Voucher
                     </h2>
-                    <p className="text-gray-400 mb-6 text-sm">Request a voucher from admin if you don't have a code.</p>
+                    <p className="text-gray-400 mb-6 text-sm">Request a voucher from admin if you don&apos;t have a code.</p>
                     {applyMsg && (
                         <div className="bg-green-500/10 text-green-400 border border-green-500/20 p-4 rounded-xl mb-6 flex items-center gap-3 animate-fade-in">
                             <CheckCircle size={18} />

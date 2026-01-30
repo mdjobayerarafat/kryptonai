@@ -1,61 +1,47 @@
 "use client";
 import Link from "next/link";
-import { Terminal } from "lucide-react";
+import { Terminal, MessageSquare } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    setIsLoggedIn(!!localStorage.getItem("token"));
+  }, []);
 
   const isActive = (path: string) => pathname === path;
 
   return (
-    <nav className="flex items-center justify-between px-8 py-6 glass-panel sticky top-0 z-50 mx-4 mt-4 rounded-2xl">
-      <Link href="/" className="flex items-center space-x-3 text-white hover:text-green-400 transition-colors cursor-pointer group">
-        <div className="p-2 glass-panel rounded-xl group-hover:bg-green-500/20 transition-colors bloom">
-          <Terminal size={24} className="neon-text" />
+    <nav className="fixed w-full top-0 z-50 bg-black/50 backdrop-blur-md border-b border-white/10 h-16">
+      <div className="container-custom h-full flex items-center justify-between">
+        <Link href="/" className="flex items-center space-x-2 text-white hover:opacity-80 transition-opacity">
+          <Terminal size={20} />
+          <span className="font-semibold tracking-tight">KryptonSecAI</span>
+        </Link>
+        
+        <div className="hidden md:flex items-center space-x-8">
+          <Link href="/features" className={`nav-link ${isActive('/features') ? 'text-white' : ''}`}>Features</Link>
+          <Link href="/solutions" className={`nav-link ${isActive('/solutions') ? 'text-white' : ''}`}>Solutions</Link>
+          <Link href="/resources" className={`nav-link ${isActive('/resources') ? 'text-white' : ''}`}>Resources</Link>
+          <Link href="/pricing" className={`nav-link ${isActive('/pricing') ? 'text-white' : ''}`}>Pricing</Link>
         </div>
-        <span className="text-xl font-bold tracking-tight">
-          KryptonSec<span className="neon-text">AI</span>
-        </span>
-      </Link>
-      
-      <div className="hidden md:flex items-center space-x-8 text-sm font-medium">
-        <Link 
-            href="/features" 
-            className={`transition-colors px-4 py-2 rounded-lg ${isActive('/features') ? 'neon-text glass-panel' : 'text-gray-300 hover:text-green-400'}`}
-        >
-            Features
-        </Link>
-        <Link 
-            href="/solutions" 
-            className={`transition-colors px-4 py-2 rounded-lg ${isActive('/solutions') ? 'neon-text glass-panel' : 'text-gray-300 hover:text-green-400'}`}
-        >
-            Solutions
-        </Link>
-        <Link 
-            href="/resources" 
-            className={`transition-colors px-4 py-2 rounded-lg ${isActive('/resources') ? 'neon-text glass-panel' : 'text-gray-300 hover:text-green-400'}`}
-        >
-            Resources
-        </Link>
-        <Link 
-            href="/pricing" 
-            className={`transition-colors px-4 py-2 rounded-lg ${isActive('/pricing') ? 'neon-text glass-panel' : 'text-gray-300 hover:text-green-400'}`}
-        >
-            Pricing
-        </Link>
-      </div>
 
-      <div className="flex items-center space-x-4">
-        <Link href="/login" className="text-sm font-medium text-gray-300 hover:text-green-400 transition-colors glass-panel px-4 py-2 rounded-lg">
-          Log in
-        </Link>
-        <Link 
-          href="/register" 
-          className="cyber-button text-sm"
-        >
-          Sign Up
-        </Link>
+        <div className="flex items-center space-x-4">
+          {isLoggedIn ? (
+            <Link href="/chat" className="button-primary h-8 px-4 text-sm flex items-center gap-2">
+              <MessageSquare size={16} />
+              Chat
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="nav-link">Log in</Link>
+              <Link href="/register" className="button-primary h-8 px-4 text-sm">Get Started</Link>
+            </>
+          )}
+        </div>
       </div>
     </nav>
   );
