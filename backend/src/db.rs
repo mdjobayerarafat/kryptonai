@@ -110,5 +110,10 @@ pub async fn init_db() -> DbPool {
         .await
         .ok();
 
+    sqlx::query("ALTER TABLE ai_models ADD COLUMN IF NOT EXISTS system_prompt TEXT")
+        .execute(&pool)
+        .await
+        .ok();
+
     pool
 }

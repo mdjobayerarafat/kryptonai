@@ -882,7 +882,25 @@ async fn chat(
         return HttpResponse::InternalServerError().json(json!({"error": "OpenRouter API Key not set"}));
     }
 
-    let system_prompt = format!(
+    let model_name = body.model.clone().unwrap_or_else(|| "deepseek/deepseek-r1-0528:free".to_string());
+
+    // Fetch model configuration from DB to get custom system prompt
+    let model_config = sqlx::query_as::<_, AIModel>("SELECT * FROM ai_models WHERE api_model_name = $1")
+        .bind(&model_name)
+        .fetch_optional(&state.rag.pool)
+        .await
+        .unwrap_or(None);
+
+    let system_prompt = if let Some(Some(custom_prompt)) = model_config.map(|m| m.system_prompt) {
+        // Inject context into custom prompt
+        if custom_prompt.contains("{}") {
+            custom_prompt.replace("{}", &context)
+        } else {
+            format!("{}\n\n## KNOWLEDGE BASE CONTEXT\nUse the following retrieved context to augment your answers:\n[CONTEXT BEGIN]\n{}\n[CONTEXT END]", custom_prompt, context)
+        }
+    } else {
+        // Default Hardcoded Prompt
+        format!(
         "You are Krypton, an elite Cybersecurity Mentor and CTF Specialist designed to guide users through complex security challenges and ethical hacking scenarios.
 
         ## CORE OBJECTIVES
@@ -917,7 +935,8 @@ async fn chat(
         - If the user provides a flag format (e.g., `CTF{{...}}`), help them find the string matching that pattern.
         - If context is missing, rely on your extensive general cybersecurity knowledge.",
         context
-    );
+        )
+    };
 
     let mut messages = vec![
         json!({"role": "system", "content": system_prompt})
@@ -928,10 +947,8 @@ async fn chat(
     }
     // No need to push body.message again as it's in db_history
 
-    let model = body.model.clone().unwrap_or_else(|| "deepseek/deepseek-r1-0528:free".to_string());
-
     let request_body = json!({
-        "model": model,
+        "model": model_name,
         "messages": messages,
         "max_tokens": 80000
     });
@@ -1139,12 +1156,13 @@ async fn add_model(
     let provider = body.provider.clone().unwrap_or_else(|| "openrouter".to_string());
 
     let result = sqlx::query(
-        "INSERT INTO ai_models (id, api_model_name, display_name, provider) VALUES ($1, $2, $3, $4)",
+        "INSERT INTO ai_models (id, api_model_name, display_name, provider, system_prompt) VALUES ($1, $2, $3, $4, $5)",
     )
     .bind(&id)
     .bind(&body.api_model_name)
     .bind(&body.display_name)
     .bind(&provider)
+    .bind(&body.system_prompt)
     .execute(&state.rag.pool)
     .await;
 
@@ -1182,14 +1200,16 @@ async fn update_model(
             if let Some(display) = &body.display_name { model.display_name = display.clone(); }
             if let Some(prov) = &body.provider { model.provider = prov.clone(); }
             if let Some(active) = body.is_active { model.is_active = active; }
+            if let Some(prompt) = &body.system_prompt { model.system_prompt = Some(prompt.clone()); }
 
             let update_result = sqlx::query(
-                "UPDATE ai_models SET api_model_name = $1, display_name = $2, provider = $3, is_active = $4 WHERE id = $5"
+                "UPDATE ai_models SET api_model_name = $1, display_name = $2, provider = $3, is_active = $4, system_prompt = $5 WHERE id = $6"
             )
             .bind(model.api_model_name)
             .bind(model.display_name)
             .bind(model.provider)
             .bind(model.is_active)
+            .bind(model.system_prompt)
             .bind(id)
             .execute(&state.rag.pool)
             .await;

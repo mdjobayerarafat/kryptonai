@@ -177,6 +177,7 @@ pub struct AIModel {
     pub provider: String,
     pub is_active: bool,
     pub created_at: Option<chrono::NaiveDateTime>,
+    pub system_prompt: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -184,6 +185,7 @@ pub struct CreateAIModelRequest {
     pub api_model_name: String,
     pub display_name: String,
     pub provider: Option<String>,
+    pub system_prompt: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -192,6 +194,7 @@ pub struct UpdateAIModelRequest {
     pub display_name: Option<String>,
     pub provider: Option<String>,
     pub is_active: Option<bool>,
+    pub system_prompt: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
